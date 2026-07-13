@@ -117,6 +117,7 @@ Buka folder ini di VS Code: `code .`
    - `0002_tambah_tipe_transaksi.sql` → dukungan **pemasukan**
    - `0003_anggaran_kategori.sql` → **anggaran per kategori (amplop)**
    - `0004_pending_kategori.sql` → bot **bertanya kategori** saat tak terdeteksi
+   - `0005_registrations.sql` → **pendaftaran mandiri** calon pelanggan
 
 ### c. Ambil kunci API
 1. Menu kiri → **Project Settings** (ikon gerigi) → **API**.
@@ -369,9 +370,18 @@ dashboard-keuangan-wa/
 ### Halaman yang tersedia
 | URL | Untuk siapa | Fungsi |
 |---|---|---|
-| `/admin` | kamu (owner) | kelola keluarga & nomor WA (login password) |
+| `/admin` | kamu (owner) | kelola keluarga & nomor WA + setujui pendaftaran (login password) |
+| `/daftar` | calon pelanggan | form pendaftaran mandiri + info pembayaran |
 | `/laporan/<family_id>` | pelanggan | lihat laporan keuangan bulan ini |
 | `/api/webhook/whatsapp` | gateway WA | menerima pesan (bukan untuk dibuka manual) |
+
+### Alur pendaftaran pelanggan baru
+1. Calon pelanggan chat **`daftar`** ke bot → bot balas harga + link `/daftar`.
+2. Isi form `/daftar` (nama keluarga, nomor suami/istri, paket) → muncul info transfer.
+3. Kirim bukti transfer via WA → kamu cek → di `/admin` klik **Setujui & Aktifkan**.
+4. Sistem otomatis membuat keluarga + mendaftarkan nomor + set masa aktif sesuai paket.
+
+> Ubah harga & rekening di `src/lib/pricing.ts`.
 
 ---
 

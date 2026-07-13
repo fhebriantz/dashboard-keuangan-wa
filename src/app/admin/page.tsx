@@ -5,8 +5,11 @@ import {
   createFamily,
   createUser,
   toggleFamilyStatus,
+  approveRegistration,
+  rejectRegistration,
   logout,
 } from './actions'
+import { getPaket } from '@/lib/pricing'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +40,7 @@ export default async function AdminPage({
   const sp = await searchParams
 
   const supabase = createAdminClient()
-  const [{ data: families }, { data: users }] = await Promise.all([
+  const [{ data: families }, { data: users }, { data: regs }] = await Promise.all([
     supabase
       .from('families')
       .select('id, nama_keluarga, status_langganan, anggaran_bulanan, expired_at')
@@ -46,10 +49,24 @@ export default async function AdminPage({
       .from('users')
       .select('id, family_id, nama, nomor_wa, role')
       .order('created_at', { ascending: false }),
+    supabase
+      .from('registrations')
+      .select('id, nama_keluarga, nama_suami, wa_suami, nama_istri, wa_istri, paket, created_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false }),
   ])
 
   const fam = (families ?? []) as Family[]
   const usr = (users ?? []) as User[]
+  const pending = (regs ?? []) as Array<{
+    id: string
+    nama_keluarga: string
+    nama_suami: string | null
+    wa_suami: string | null
+    nama_istri: string | null
+    wa_istri: string | null
+    paket: string
+  }>
   const famName = (id: string) =>
     fam.find((f) => f.id === id)?.nama_keluarga ?? '(?)'
 
@@ -64,6 +81,41 @@ export default async function AdminPage({
 
       {sp.ok && <p style={okBox}>✅ {sp.ok}</p>}
       {sp.err && <p style={errBox}>⚠️ {sp.err}</p>}
+
+      {/* ---------- Pendaftaran masuk ---------- */}
+      {pending.length > 0 && (
+        <section style={{ ...card, borderColor: '#f59e0b', background: '#fffbeb' }}>
+          <h2 style={h2}>🔔 Pendaftaran masuk ({pending.length})</h2>
+          <p style={{ fontSize: 13, color: '#71717a', marginTop: 0 }}>
+            Cek bukti transfer di WhatsApp, lalu <b>Setujui</b> untuk mengaktifkan.
+          </p>
+          <div style={{ display: 'grid', gap: 12 }}>
+            {pending.map((r) => (
+              <div key={r.id} style={{ ...card, background: '#fff' }}>
+                <div style={{ fontWeight: 600 }}>{r.nama_keluarga}</div>
+                <div style={{ fontSize: 14, color: '#52525b', margin: '4px 0' }}>
+                  Paket: {getPaket(r.paket)?.label ?? r.paket}
+                </div>
+                <div style={{ fontSize: 14 }}>
+                  {r.nama_suami || 'Suami'}: {r.wa_suami ?? '—'}
+                  <br />
+                  {r.nama_istri || 'Istri'}: {r.wa_istri ?? '—'}
+                </div>
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <form action={approveRegistration}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <button style={btn}>Setujui & Aktifkan</button>
+                  </form>
+                  <form action={rejectRegistration}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <button style={ghostBtn}>Tolak</button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ---------- Tambah Keluarga ---------- */}
       <section style={card}>

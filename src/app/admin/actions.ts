@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/phone'
+import { getPaket } from '@/lib/pricing'
 import {
   verifyPassword,
   setSession,
@@ -75,6 +76,70 @@ export async function createUser(formData: FormData) {
 
   revalidatePath('/admin')
   redirect('/admin?ok=' + encodeURIComponent(`Anggota ${nama} (${nomor}) ditambahkan`))
+}
+
+export async function approveRegistration(formData: FormData) {
+  await guard()
+  const id = String(formData.get('id') ?? '')
+  const supabase = createAdminClient()
+
+  const { data: reg } = await supabase
+    .from('registrations')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  if (!reg) redirect('/admin?err=' + encodeURIComponent('Pendaftaran tidak ditemukan'))
+  if (reg.status !== 'pending')
+    redirect('/admin?err=' + encodeURIComponent('Pendaftaran sudah diproses'))
+
+  const hari = getPaket(reg.paket)?.hari ?? 30
+  const expired = new Date(Date.now() + hari * 86_400_000).toISOString()
+
+  const { data: fam, error: famErr } = await supabase
+    .from('families')
+    .insert({ nama_keluarga: reg.nama_keluarga, status_langganan: 'active', expired_at: expired })
+    .select('id')
+    .single()
+  if (famErr || !fam)
+    redirect('/admin?err=' + encodeURIComponent(famErr?.message ?? 'Gagal membuat keluarga'))
+
+  const members: Array<Record<string, string>> = []
+  if (reg.wa_suami)
+    members.push({ family_id: fam.id, nama: reg.nama_suami || 'Suami', nomor_wa: reg.wa_suami, role: 'suami' })
+  if (reg.wa_istri)
+    members.push({ family_id: fam.id, nama: reg.nama_istri || 'Istri', nomor_wa: reg.wa_istri, role: 'istri' })
+
+  if (members.length > 0) {
+    const { error: uErr } = await supabase.from('users').insert(members)
+    if (uErr)
+      redirect(
+        '/admin?err=' +
+          encodeURIComponent(
+            'Keluarga dibuat, tapi nomor gagal: ' +
+              (uErr.code === '23505' ? 'salah satu nomor sudah terdaftar' : uErr.message),
+          ),
+      )
+  }
+
+  await supabase
+    .from('registrations')
+    .update({ status: 'approved', family_id: fam.id, processed_at: new Date().toISOString() })
+    .eq('id', id)
+
+  revalidatePath('/admin')
+  redirect('/admin?ok=' + encodeURIComponent(`Pendaftaran "${reg.nama_keluarga}" disetujui & diaktifkan`))
+}
+
+export async function rejectRegistration(formData: FormData) {
+  await guard()
+  const id = String(formData.get('id') ?? '')
+  const supabase = createAdminClient()
+  await supabase
+    .from('registrations')
+    .update({ status: 'rejected', processed_at: new Date().toISOString() })
+    .eq('id', id)
+  revalidatePath('/admin')
+  redirect('/admin?ok=' + encodeURIComponent('Pendaftaran ditolak'))
 }
 
 export async function toggleFamilyStatus(formData: FormData) {

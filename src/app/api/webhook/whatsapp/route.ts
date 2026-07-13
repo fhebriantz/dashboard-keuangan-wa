@@ -4,7 +4,13 @@ import { normalizePhone } from '@/lib/phone'
 import { parseEntry } from '@/lib/parse-entry'
 import { normalizeInbound } from '@/lib/whatsapp/inbound'
 import { sendReply } from '@/lib/whatsapp/outbound'
-import { detectCommand, handleCommand, detectSetBudget } from '@/lib/whatsapp/commands'
+import {
+  detectCommand,
+  handleCommand,
+  detectSetBudget,
+  isRegisterIntent,
+  registerInfoText,
+} from '@/lib/whatsapp/commands'
 import { emojiOf, matchCategory } from '@/lib/category'
 import { wibMonthStartISO } from '@/lib/time'
 
@@ -86,11 +92,16 @@ export async function POST(req: NextRequest) {
     : null
 
   if (!user || !family) {
-    // Hemat kuota: secara default JANGAN balas nomor tak terdaftar (bisa
-    // spam / salah sambung). Terima pesan (200) tapi diam. Set env
-    // REPLY_TO_UNREGISTERED=true kalau ingin menyapa calon pelanggan.
+    // Nomor tak terdaftar yang ingin mendaftar -> kirim info + link form.
+    if (isRegisterIntent(inbound!.message)) {
+      return respond(registerInfoText())
+    }
+    // Hemat kuota: selain "daftar", secara default JANGAN balas nomor tak
+    // terdaftar (bisa spam/salah sambung). Terima (200) tapi diam.
     if (process.env.REPLY_TO_UNREGISTERED === 'true') {
-      return respond('Nomor Anda belum terdaftar. Silakan hubungi admin untuk berlangganan.')
+      return respond(
+        'Nomor Anda belum terdaftar. Ketik *daftar* untuk berlangganan.',
+      )
     }
     return NextResponse.json({ ok: true, ignored: 'unregistered' })
   }

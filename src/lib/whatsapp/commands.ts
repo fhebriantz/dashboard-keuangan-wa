@@ -3,6 +3,28 @@ import { wibMonthStartISO, wibDayStartISO, formatTanggalWIB } from '@/lib/time'
 import { parseTransactionMessage } from '@/lib/parse-transaction'
 import { normalizeCategory, emojiOf } from '@/lib/category'
 import { monthlyData, type CategoryRow } from '@/lib/report-data'
+import { PAKET, rupiah as rp } from '@/lib/pricing'
+
+/** Apakah pesan dari nomor tak terdaftar bermaksud mendaftar? */
+export function isRegisterIntent(message: string): boolean {
+  return /^(daftar|mendaftar|mau daftar|register|langganan|berlangganan)/i.test(
+    (message ?? '').trim(),
+  )
+}
+
+/** Info onboarding untuk calon pelanggan (harga + link form). */
+export function registerInfoText(): string {
+  const daftar = PAKET.map((p) => `• ${p.label} — ${rp(p.harga)}`).join('\n')
+  const base = process.env.APP_URL?.replace(/\/$/, '')
+  let msg =
+    '🙌 Mau berlangganan *Dashboard Keuangan WA*?\n\n' +
+    'Catat keuangan keluarga cukup lewat chat WhatsApp.\n\n' +
+    `*Paket:*\n${daftar}\n\n`
+  msg += base
+    ? `Daftar di sini (isi 1 menit):\n${base}/daftar\n\nSetelah daftar, kamu akan dapat info pembayaran.`
+    : 'Balas pesan ini untuk info pendaftaran.'
+  return msg
+}
 
 /**
  * Deteksi perintah set anggaran per kategori:
