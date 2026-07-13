@@ -20,6 +20,25 @@ export type SendResult = { delivered: boolean; inlineReply?: string }
 export async function sendReply(to: string, text: string): Promise<SendResult> {
   const provider = process.env.WA_PROVIDER ?? 'response'
 
+  if (provider === 'fonnte') {
+    const token = process.env.FONNTE_TOKEN
+    if (!token) throw new Error('FONNTE_TOKEN belum di-set.')
+    // Anti-ban: jeda menyerupai manusia + teks tak byte-identical.
+    await sleep(humanDelayMs())
+    const res = await fetch('https://api.fonnte.com/send', {
+      method: 'POST',
+      headers: {
+        Authorization: token,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        target: to,
+        message: varyReply(text),
+      }).toString(),
+    })
+    return { delivered: res.ok }
+  }
+
   if (provider === 'cloud') {
     const token = process.env.WA_CLOUD_TOKEN
     const phoneId = process.env.WA_CLOUD_PHONE_ID
