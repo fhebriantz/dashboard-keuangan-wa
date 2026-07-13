@@ -24,6 +24,12 @@ export function detectCommand(message: string): CommandType | null {
 const rupiah = (n: number) =>
   'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n))
 
+/** Link laporan web keluarga, jika APP_URL di-set. */
+function reportLink(familyId: string): string | null {
+  const base = process.env.APP_URL?.replace(/\/$/, '')
+  return base ? `${base}/laporan/${familyId}` : null
+}
+
 type Family = { id: string; nama_keluarga: string; anggaran_bulanan: number | null }
 type User = { id: string; nama: string }
 
@@ -105,6 +111,8 @@ export async function handleCommand(
         const sisa = Number(family.anggaran_bulanan) - total
         msg += sisa >= 0 ? `\nSisa anggaran: ${rupiah(sisa)}` : `\n⚠️ Lewat ${rupiah(-sisa)}`
       }
+      const link = reportLink(family.id)
+      if (link) msg += `\n\n🔗 Laporan lengkap: ${link}`
       return msg
     }
 
