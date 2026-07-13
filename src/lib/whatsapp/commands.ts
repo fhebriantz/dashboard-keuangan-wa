@@ -35,10 +35,12 @@ type User = { id: string; nama: string }
 
 const HELP_TEXT =
   '📌 *Menu Bot Keuangan*\n\n' +
-  'Catat pengeluaran — ketik langsung, contoh:\n' +
+  'Catat *pengeluaran* — ketik langsung:\n' +
   '• Bensin 50000\n' +
-  '• Makan siang 35rb\n' +
-  '• Token listrik Rp100.000\n\n' +
+  '• Makan siang 35rb\n\n' +
+  'Catat *pemasukan* — pakai kata "masuk":\n' +
+  '• masuk gaji 5000000\n' +
+  '• pemasukan bonus 1jt\n\n' +
   'Perintah lain:\n' +
   '• *total* — total & sisa anggaran bulan ini\n' +
   '• *laporan* — rekap transaksi bulan ini\n' +
@@ -46,19 +48,24 @@ const HELP_TEXT =
   '• *hapus* — batalkan catatan terakhir\n' +
   '• *bantuan* — tampilkan menu ini'
 
-async function sumSince(
+async function totalsSince(
   supabase: SupabaseClient,
   familyId: string,
   sinceISO: string,
-): Promise<{ total: number; count: number }> {
+): Promise<{ pengeluaran: number; pemasukan: number; count: number }> {
   const { data } = await supabase
     .from('transactions')
-    .select('nominal')
+    .select('nominal, tipe')
     .eq('family_id', familyId)
     .gte('created_at', sinceISO)
   const rows = data ?? []
-  const total = rows.reduce((s, r) => s + Number(r.nominal), 0)
-  return { total, count: rows.length }
+  let pengeluaran = 0
+  let pemasukan = 0
+  for (const r of rows) {
+    if (r.tipe === 'pemasukan') pemasukan += Number(r.nominal)
+    else pengeluaran += Number(r.nominal)
+  }
+  return { pengeluaran, pemasukan, count: rows.length }
 }
 
 export async function handleCommand(
@@ -72,43 +79,65 @@ export async function handleCommand(
       return HELP_TEXT
 
     case 'total': {
-      const { total } = await sumSince(supabase, family.id, wibMonthStartISO())
-      let msg = `📊 *Bulan ini*\nTotal pengeluaran: ${rupiah(total)}`
+      const { pengeluaran, pemasukan } = await totalsSince(
+        supabase,
+        family.id,
+        wibMonthStartISO(),
+      )
+      const saldo = pemasukan - pengeluaran
+      let msg =
+        `📊 *Bulan ini*\n` +
+        `💵 Pemasukan: ${rupiah(pemasukan)}\n` +
+        `💰 Pengeluaran: ${rupiah(pengeluaran)}\n` +
+        `🧮 Saldo: ${rupiah(saldo)}`
       if (family.anggaran_bulanan != null) {
-        const sisa = Number(family.anggaran_bulanan) - total
+        const sisa = Number(family.anggaran_bulanan) - pengeluaran
         msg +=
-          `\nAnggaran: ${rupiah(Number(family.anggaran_bulanan))}\n` +
+          `\n\nAnggaran: ${rupiah(Number(family.anggaran_bulanan))}\n` +
           (sisa >= 0 ? `Sisa: ${rupiah(sisa)}` : `⚠️ Lewat ${rupiah(-sisa)}`)
       }
       return msg
     }
 
     case 'today': {
-      const { total, count } = await sumSince(supabase, family.id, wibDayStartISO())
-      return `📅 *Hari ini*\n${count} transaksi\nTotal: ${rupiah(total)}`
+      const { pengeluaran, pemasukan, count } = await totalsSince(
+        supabase,
+        family.id,
+        wibDayStartISO(),
+      )
+      return (
+        `📅 *Hari ini* (${count} transaksi)\n` +
+        `💵 Pemasukan: ${rupiah(pemasukan)}\n` +
+        `💰 Pengeluaran: ${rupiah(pengeluaran)}`
+      )
     }
 
     case 'laporan': {
       const monthStart = wibMonthStartISO()
-      const [{ data: list }, { total }] = await Promise.all([
+      const [{ data: list }, tot] = await Promise.all([
         supabase
           .from('transactions')
-          .select('nama_pengeluaran, nominal, created_at')
+          .select('nama_pengeluaran, nominal, created_at, tipe')
           .eq('family_id', family.id)
           .gte('created_at', monthStart)
           .order('created_at', { ascending: false })
           .limit(15),
-        sumSince(supabase, family.id, monthStart),
+        totalsSince(supabase, family.id, monthStart),
       ])
       const rows = list ?? []
       if (rows.length === 0) return '📋 Belum ada transaksi bulan ini.'
-      const lines = rows.map(
-        (r) =>
-          `${formatTanggalWIB(r.created_at)}  ${r.nama_pengeluaran} — ${rupiah(Number(r.nominal))}`,
-      )
-      let msg = `📋 *Rekap bulan ini* (15 terbaru)\n\n${lines.join('\n')}\n\nTotal bulan ini: ${rupiah(total)}`
+      const lines = rows.map((r) => {
+        const tanda = r.tipe === 'pemasukan' ? '➕' : '➖'
+        return `${formatTanggalWIB(r.created_at)}  ${tanda} ${r.nama_pengeluaran} — ${rupiah(Number(r.nominal))}`
+      })
+      const saldo = tot.pemasukan - tot.pengeluaran
+      let msg =
+        `📋 *Rekap bulan ini* (15 terbaru)\n\n${lines.join('\n')}\n\n` +
+        `💵 Pemasukan: ${rupiah(tot.pemasukan)}\n` +
+        `💰 Pengeluaran: ${rupiah(tot.pengeluaran)}\n` +
+        `🧮 Saldo: ${rupiah(saldo)}`
       if (family.anggaran_bulanan != null) {
-        const sisa = Number(family.anggaran_bulanan) - total
+        const sisa = Number(family.anggaran_bulanan) - tot.pengeluaran
         msg += sisa >= 0 ? `\nSisa anggaran: ${rupiah(sisa)}` : `\n⚠️ Lewat ${rupiah(-sisa)}`
       }
       const link = reportLink(family.id)

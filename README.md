@@ -113,6 +113,8 @@ Buka folder ini di VS Code: `code .`
    **copy semua isinya**, tempel ke SQL Editor.
 3. Klik **Run** (atau `Ctrl/Cmd + Enter`).
 4. Kalau muncul **Success. No rows returned**, berarti tabel sudah jadi. 🎉
+5. Ulangi langkah 1-3 untuk file `0002_tambah_tipe_transaksi.sql` (menambah
+   dukungan **pemasukan**). Jalankan berurutan setelah `0001`.
 
 ### c. Ambil kunci API
 1. Menu kiri → **Project Settings** (ikon gerigi) → **API**.
@@ -263,7 +265,8 @@ Selain mencatat pengeluaran, pelanggan bisa mengetik (dengan atau tanpa `/`):
 | `laporan` / `rekap` | rincian transaksi bulan ini (15 terbaru) |
 | `hari` / `today` | pengeluaran hari ini |
 | `hapus` / `batal` | batalkan catatan terakhir milik sendiri |
-| *(teks biasa)* | mencatat pengeluaran, mis. `Bensin 50000` |
+| *(teks biasa)* | mencatat **pengeluaran**, mis. `Bensin 50000` |
+| `masuk ...` / `pemasukan ...` / `+...` | mencatat **pemasukan**, mis. `masuk gaji 5000000` |
 
 ### Laporan versi web
 Tiap keluarga punya halaman laporan yang bisa dibuka di HP:

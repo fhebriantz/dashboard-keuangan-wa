@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/phone'
-import { parseTransactionMessage } from '@/lib/parse-transaction'
+import { parseEntry } from '@/lib/parse-entry'
 import { normalizeInbound } from '@/lib/whatsapp/inbound'
 import { sendReply } from '@/lib/whatsapp/outbound'
 import { detectCommand, handleCommand } from '@/lib/whatsapp/commands'
@@ -108,15 +108,16 @@ export async function POST(req: NextRequest) {
   }
 
   // -----------------------------------------------------------
-  // 6) Kalau bukan perintah, anggap pencatatan pengeluaran.
+  // 6) Kalau bukan perintah, catat sebagai pemasukan/pengeluaran.
   // -----------------------------------------------------------
-  const parsed = parseTransactionMessage(inbound!.message)
-  if (!parsed) {
+  const entry = parseEntry(inbound!.message)
+  if (!entry) {
     return respond(
       'Format tidak dikenali. Contoh:\n' +
-        '• "Bensin 50000"\n' +
+        '• "Bensin 50000" (pengeluaran)\n' +
         '• "Makan siang 35rb"\n' +
-        '• "Token listrik Rp. 100.000"',
+        '• "masuk gaji 5000000" (pemasukan)\n\n' +
+        'Ketik *bantuan* untuk menu.',
     )
   }
 
@@ -128,8 +129,9 @@ export async function POST(req: NextRequest) {
   const { error: insErr } = await supabase.from('transactions').insert({
     family_id: family.id,
     user_id: user.id,
-    nama_pengeluaran: parsed.nama,
-    nominal: parsed.nominal,
+    nama_pengeluaran: entry.nama,
+    nominal: entry.nominal,
+    tipe: entry.tipe,
   })
 
   if (insErr) {
@@ -138,12 +140,19 @@ export async function POST(req: NextRequest) {
   }
 
   // -----------------------------------------------------------
-  // 8) Balasan ramah + estimasi sisa anggaran bulan ini.
+  // 8) Balasan sesuai tipe.
   // -----------------------------------------------------------
+  if (entry.tipe === 'pemasukan') {
+    return respond(
+      `✅ Pemasukan tercatat untuk Keluarga *${family.nama_keluarga}*\n` +
+        `📝 ${entry.nama}\n💵 ${rupiah(entry.nominal)}`,
+    )
+  }
+
   const lines = [
     `✅ Tercatat untuk Keluarga *${family.nama_keluarga}*`,
-    `📝 ${parsed.nama}`,
-    `💰 ${rupiah(parsed.nominal)}`,
+    `📝 ${entry.nama}`,
+    `💰 ${rupiah(entry.nominal)}`,
   ]
 
   if (family.anggaran_bulanan != null) {

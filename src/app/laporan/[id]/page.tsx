@@ -39,16 +39,22 @@ export default async function LaporanPage({
   const monthStart = wibMonthStartISO()
   const { data: txs } = await supabase
     .from('transactions')
-    .select('nama_pengeluaran, nominal, created_at')
+    .select('nama_pengeluaran, nominal, created_at, tipe')
     .eq('family_id', id)
     .gte('created_at', monthStart)
     .order('created_at', { ascending: false })
 
   const rows = txs ?? []
-  const total = rows.reduce((s, r) => s + Number(r.nominal), 0)
+  const pemasukan = rows
+    .filter((r) => r.tipe === 'pemasukan')
+    .reduce((s, r) => s + Number(r.nominal), 0)
+  const pengeluaran = rows
+    .filter((r) => r.tipe !== 'pemasukan')
+    .reduce((s, r) => s + Number(r.nominal), 0)
+  const saldoKas = pemasukan - pengeluaran
   const anggaran = family.anggaran_bulanan != null ? Number(family.anggaran_bulanan) : null
-  const sisa = anggaran != null ? anggaran - total : null
-  const persen = anggaran && anggaran > 0 ? Math.min(100, (total / anggaran) * 100) : 0
+  const sisa = anggaran != null ? anggaran - pengeluaran : null
+  const persen = anggaran && anggaran > 0 ? Math.min(100, (pengeluaran / anggaran) * 100) : 0
 
   return (
     <main style={wrap}>
@@ -59,15 +65,26 @@ export default async function LaporanPage({
 
       <div style={cardsRow}>
         <div style={statCard}>
-          <div style={statLabel}>Total pengeluaran</div>
-          <div style={statBig}>{rupiah(total)}</div>
+          <div style={statLabel}>Pemasukan</div>
+          <div style={{ ...statBig, color: '#16a34a' }}>{rupiah(pemasukan)}</div>
+        </div>
+        <div style={statCard}>
+          <div style={statLabel}>Pengeluaran</div>
+          <div style={{ ...statBig, color: '#dc2626' }}>{rupiah(pengeluaran)}</div>
+        </div>
+      </div>
+
+      <div style={cardsRow}>
+        <div style={statCard}>
+          <div style={statLabel}>Saldo (pemasukan - pengeluaran)</div>
+          <div style={{ ...statBig, color: saldoKas >= 0 ? '#16a34a' : '#dc2626' }}>
+            {rupiah(saldoKas)}
+          </div>
         </div>
         {anggaran != null && (
           <div style={statCard}>
             <div style={statLabel}>Sisa anggaran</div>
-            <div
-              style={{ ...statBig, color: (sisa ?? 0) >= 0 ? '#16a34a' : '#dc2626' }}
-            >
+            <div style={{ ...statBig, color: (sisa ?? 0) >= 0 ? '#16a34a' : '#dc2626' }}>
               {rupiah(sisa ?? 0)}
             </div>
           </div>
@@ -99,17 +116,22 @@ export default async function LaporanPage({
         <p style={{ color: '#71717a', fontSize: 14 }}>Belum ada transaksi bulan ini.</p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {rows.map((r, i) => (
-            <li key={i} style={txItem}>
-              <div>
-                <div style={{ fontWeight: 500 }}>{r.nama_pengeluaran}</div>
-                <div style={{ fontSize: 12, color: '#a1a1aa' }}>
-                  {formatTanggalWIB(r.created_at)}
+          {rows.map((r, i) => {
+            const masuk = r.tipe === 'pemasukan'
+            return (
+              <li key={i} style={txItem}>
+                <div>
+                  <div style={{ fontWeight: 500 }}>{r.nama_pengeluaran}</div>
+                  <div style={{ fontSize: 12, color: '#a1a1aa' }}>
+                    {formatTanggalWIB(r.created_at)} · {masuk ? 'pemasukan' : 'pengeluaran'}
+                  </div>
                 </div>
-              </div>
-              <div style={{ fontWeight: 600 }}>{rupiah(Number(r.nominal))}</div>
-            </li>
-          ))}
+                <div style={{ fontWeight: 600, color: masuk ? '#16a34a' : '#dc2626' }}>
+                  {masuk ? '+' : '−'} {rupiah(Number(r.nominal))}
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
 
