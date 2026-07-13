@@ -4,6 +4,7 @@ import { normalizePhone } from '@/lib/phone'
 import { parseTransactionMessage } from '@/lib/parse-transaction'
 import { normalizeInbound } from '@/lib/whatsapp/inbound'
 import { sendReply } from '@/lib/whatsapp/outbound'
+import { detectCommand, handleCommand } from '@/lib/whatsapp/commands'
 
 // service_role + supabase-js butuh runtime Node (bukan Edge murni).
 export const runtime = 'nodejs'
@@ -98,7 +99,16 @@ export async function POST(req: NextRequest) {
   }
 
   // -----------------------------------------------------------
-  // 5) Parse pesan.
+  // 5) Perintah bot (help/total/laporan/hari/hapus)? Tangani lebih dulu.
+  // -----------------------------------------------------------
+  const cmd = detectCommand(inbound!.message)
+  if (cmd) {
+    const text = await handleCommand(supabase, family, user, cmd)
+    return respond(text)
+  }
+
+  // -----------------------------------------------------------
+  // 6) Kalau bukan perintah, anggap pencatatan pengeluaran.
   // -----------------------------------------------------------
   const parsed = parseTransactionMessage(inbound!.message)
   if (!parsed) {
@@ -111,7 +121,7 @@ export async function POST(req: NextRequest) {
   }
 
   // -----------------------------------------------------------
-  // 6) Simpan transaksi. family_id & user_id DIKUNCI dari hasil
+  // 7) Simpan transaksi. family_id & user_id DIKUNCI dari hasil
   //    lookup server-side — tidak pernah dari input client.
   //    Inilah inti isolasi multi-tenant di jalur tulis.
   // -----------------------------------------------------------
@@ -128,7 +138,7 @@ export async function POST(req: NextRequest) {
   }
 
   // -----------------------------------------------------------
-  // 7) Balasan ramah + estimasi sisa anggaran bulan ini.
+  // 8) Balasan ramah + estimasi sisa anggaran bulan ini.
   // -----------------------------------------------------------
   const lines = [
     `✅ Tercatat untuk Keluarga *${family.nama_keluarga}*`,

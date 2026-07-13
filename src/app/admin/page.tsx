@@ -144,6 +144,7 @@ export default async function AdminPage({
                 <th style={th}>Keluarga</th>
                 <th style={th}>Status</th>
                 <th style={th}>Anggaran</th>
+                <th style={th}>Laporan</th>
                 <th style={th}>Aksi</th>
               </tr>
             </thead>
@@ -157,6 +158,15 @@ export default async function AdminPage({
                     </span>
                   </td>
                   <td style={td}>{rupiah(f.anggaran_bulanan)}</td>
+                  <td style={td}>
+                    <a
+                      href={`/laporan/${f.id}`}
+                      target="_blank"
+                      style={{ color: '#2563eb', fontSize: 13 }}
+                    >
+                      Lihat
+                    </a>
+                  </td>
                   <td style={td}>
                     <form action={toggleFamilyStatus}>
                       <input type="hidden" name="id" value={f.id} />

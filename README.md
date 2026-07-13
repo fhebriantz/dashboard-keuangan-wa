@@ -12,7 +12,13 @@ Bot balas  : ✅ Tercatat untuk Keluarga Budi
              📝 Bensin
              💰 Rp 50.000
              📊 Sisa anggaran bulan ini: Rp 2.450.000
+
+User (WA)  : total
+Bot balas  : 📊 Bulan ini — Total: Rp 50.000 · Sisa: Rp 2.450.000
 ```
+
+Pelanggan juga bisa ketik `laporan`, `hari`, `hapus`, atau `bantuan`.
+Owner mengelola pelanggan lewat halaman `/admin`.
 
 Panduan ini ditulis untuk **pemula total**. Ikuti berurutan dari atas.
 
@@ -135,7 +141,12 @@ Buka folder ini di VS Code: `code .`
    # buat string acak panjang, mis. hasil dari: openssl rand -hex 24
    WA_WEBHOOK_SECRET=rahasia-acak-panjang-punya-kamu
 
-   WA_PROVIDER=response
+   # password untuk masuk halaman admin (/admin)
+   ADMIN_PASSWORD=password-kuat-punya-kamu
+
+   # gateway WA: fonnte (rekomendasi trial) / cloud (resmi Meta) / response
+   WA_PROVIDER=fonnte
+   FONNTE_TOKEN=            # token device dari dashboard Fonnte (jika pakai fonnte)
    WA_CLOUD_TOKEN=
    WA_CLOUD_PHONE_ID=
    ```
@@ -225,14 +236,39 @@ https://NAMA-PROJECT-KAMU.vercel.app/api/webhook/whatsapp?secret=RAHASIA-KAMU
 
 ### Contoh pakai Fonnte (paket gratis)
 1. Daftar di https://fonnte.com, sambungkan nomor bot (scan QR seperti WhatsApp Web).
-2. Masuk menu **Device → Webhook / Autoreply Webhook**.
-3. Tempel URL webhook di atas.
+2. Di **pengaturan Device**, isi kolom **Webhook** dengan URL di atas, lalu pilih
+   sumber pesan **Personal** dan simpan. *(Menu "Webhook" di sidebar hanya berisi
+   LOG, bukan tempat mengisi URL.)*
+3. Salin **Token** device dari Fonnte → set di env: `WA_PROVIDER=fonnte` dan
+   `FONNTE_TOKEN=<token>` (di lokal & Vercel), lalu redeploy.
 4. Kirim WA "Bensin 50000" dari nomor terdaftar ke nomor bot → harus dibalas.
 
+> **Penting soal Fonnte:** balasan TIDAK dikirim dari response webhook — server
+> kita aktif memanggil API Fonnte, makanya butuh `FONNTE_TOKEN`. Fonnte juga
+> mengirim data sebagai *form-data* (bukan JSON); webhook kita sudah menangani
+> keduanya.
+>
 > Fonnte/Baileys = **gratis tapi ada risiko banned** (unofficial). Cocok untuk
 > percobaan. Untuk pelanggan berbayar, pindah ke **WhatsApp Cloud API resmi**
 > (set `WA_PROVIDER=cloud` + isi `WA_CLOUD_TOKEN` & `WA_CLOUD_PHONE_ID`).
 > Detail anti-ban ada di `src/lib/whatsapp/anti-ban.ts`.
+
+### Perintah yang bisa diketik pelanggan
+Selain mencatat pengeluaran, pelanggan bisa mengetik (dengan atau tanpa `/`):
+
+| Ketik | Fungsi |
+|---|---|
+| `bantuan` / `help` / `menu` | tampilkan daftar perintah |
+| `total` / `saldo` | total & sisa anggaran bulan ini |
+| `laporan` / `rekap` | rincian transaksi bulan ini (15 terbaru) |
+| `hari` / `today` | pengeluaran hari ini |
+| `hapus` / `batal` | batalkan catatan terakhir milik sendiri |
+| *(teks biasa)* | mencatat pengeluaran, mis. `Bensin 50000` |
+
+### Laporan versi web
+Tiap keluarga punya halaman laporan yang bisa dibuka di HP:
+`https://NAMA-PROJECT-KAMU.vercel.app/laporan/<family_id>`. Link ini tersedia di
+halaman `/admin` (kolom **Laporan → Lihat**) — tinggal kirim ke pelanggan.
 
 ---
 
@@ -299,17 +335,32 @@ dashboard-keuangan-wa/
     ├── app/
     │   ├── page.tsx               ← halaman status sederhana
     │   ├── layout.tsx
+    │   ├── admin/                 ← halaman admin (kelola keluarga & nomor WA)
+    │   │   ├── page.tsx
+    │   │   ├── actions.ts         ← server actions (tambah/ubah data)
+    │   │   └── login/page.tsx     ← login admin (password)
+    │   ├── laporan/[id]/page.tsx  ← laporan read-only per keluarga (buka di HP)
     │   └── api/webhook/whatsapp/
-    │       └── route.ts           ← OTAK: terima pesan WA, simpan transaksi
+    │       └── route.ts           ← OTAK: terima pesan WA, perintah, simpan transaksi
     └── lib/
         ├── phone.ts               ← normalisasi nomor WA (0812 -> 62812)
         ├── parse-transaction.ts   ← ubah "Bensin 50rb" jadi {nama, nominal}
+        ├── time.ts                ← batas hari/bulan zona WIB untuk rekap
+        ├── admin-auth.ts          ← proteksi halaman admin (cookie + HMAC)
         ├── supabase/admin.ts      ← koneksi DB (server, service_role)
         └── whatsapp/
             ├── inbound.ts         ← seragamkan payload antar-gateway
-            ├── outbound.ts        ← kirim balasan (mode response / cloud)
+            ├── outbound.ts        ← kirim balasan (response / fonnte / cloud)
+            ├── commands.ts        ← perintah bot (total, laporan, hapus, dll)
             └── anti-ban.ts        ← jeda manusiawi & variasi teks
 ```
+
+### Halaman yang tersedia
+| URL | Untuk siapa | Fungsi |
+|---|---|---|
+| `/admin` | kamu (owner) | kelola keluarga & nomor WA (login password) |
+| `/laporan/<family_id>` | pelanggan | lihat laporan keuangan bulan ini |
+| `/api/webhook/whatsapp` | gateway WA | menerima pesan (bukan untuk dibuka manual) |
 
 ---
 
