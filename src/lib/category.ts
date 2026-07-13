@@ -75,3 +75,16 @@ export function normalizeCategory(input: string): string {
 export function emojiOf(kategori: string): string {
   return CATEGORY_EMOJI[kategori] ?? '📦'
 }
+
+/**
+ * Cocokkan sebuah balasan pelanggan ke kategori yang dikenal (tanpa angka).
+ * Dipakai saat bot bertanya "masuk kategori apa?" lalu user membalas 1 kata.
+ * Return kategori kanonik, atau null kalau bukan kategori yang dikenal.
+ */
+export function matchCategory(input: string): string | null {
+  const t = (input ?? '').trim().toLowerCase()
+  if (!t || /\d/.test(t)) return null
+  if (ALIASES[t]) return ALIASES[t]
+  const known = CATEGORIES.find((c) => c.toLowerCase() === t)
+  return known ?? null
+}

@@ -5,7 +5,7 @@ import { parseEntry } from '@/lib/parse-entry'
 import { normalizeInbound } from '@/lib/whatsapp/inbound'
 import { sendReply } from '@/lib/whatsapp/outbound'
 import { detectCommand, handleCommand, detectSetBudget } from '@/lib/whatsapp/commands'
-import { emojiOf } from '@/lib/category'
+import { emojiOf, matchCategory } from '@/lib/category'
 import { wibMonthStartISO } from '@/lib/time'
 
 // service_role + supabase-js butuh runtime Node (bukan Edge murni).
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   const { data: user, error: userErr } = await supabase
     .from('users')
     .select(
-      'id, nama, family_id, families ( id, nama_keluarga, status_langganan, expired_at, anggaran_bulanan )',
+      'id, nama, family_id, pending_tx_id, pending_at, families ( id, nama_keluarga, status_langganan, expired_at, anggaran_bulanan )',
     )
     .eq('nomor_wa', sender)
     .maybeSingle()
@@ -104,6 +104,33 @@ export async function POST(req: NextRequest) {
 
   if (!isActive) {
     return respond('Masa langganan Anda telah habis. Silakan perpanjang di dashboard.')
+  }
+
+  // -----------------------------------------------------------
+  // 4b) Menunggu jawaban kategori dari pertanyaan sebelumnya?
+  // -----------------------------------------------------------
+  if (user.pending_tx_id) {
+    const answered = matchCategory(inbound!.message)
+    const fresh =
+      user.pending_at &&
+      Date.now() - new Date(user.pending_at).getTime() < 60 * 60 * 1000
+    if (answered && fresh) {
+      await supabase
+        .from('transactions')
+        .update({ kategori: answered })
+        .eq('id', user.pending_tx_id)
+        .eq('family_id', family.id)
+      await supabase
+        .from('users')
+        .update({ pending_tx_id: null, pending_at: null })
+        .eq('id', user.id)
+      return respond(`✅ Dikategorikan sebagai ${emojiOf(answered)} ${answered}.`)
+    }
+    // Bukan jawaban kategori / kadaluarsa -> bersihkan, lanjut proses biasa.
+    await supabase
+      .from('users')
+      .update({ pending_tx_id: null, pending_at: null })
+      .eq('id', user.id)
   }
 
   // -----------------------------------------------------------
@@ -150,14 +177,18 @@ export async function POST(req: NextRequest) {
   //    lookup server-side — tidak pernah dari input client.
   //    Inilah inti isolasi multi-tenant di jalur tulis.
   // -----------------------------------------------------------
-  const { error: insErr } = await supabase.from('transactions').insert({
-    family_id: family.id,
-    user_id: user.id,
-    nama_pengeluaran: entry.nama,
-    nominal: entry.nominal,
-    tipe: entry.tipe,
-    kategori: entry.kategori,
-  })
+  const { data: inserted, error: insErr } = await supabase
+    .from('transactions')
+    .insert({
+      family_id: family.id,
+      user_id: user.id,
+      nama_pengeluaran: entry.nama,
+      nominal: entry.nominal,
+      tipe: entry.tipe,
+      kategori: entry.kategori,
+    })
+    .select('id')
+    .single()
 
   if (insErr) {
     console.error('[webhook] insert error:', insErr.message)
@@ -180,6 +211,22 @@ export async function POST(req: NextRequest) {
     `📝 ${entry.nama}`,
     `${emojiOf(kategori)} ${kategori} · ${rupiah(entry.nominal)}`,
   ]
+
+  // Kategori tak terdeteksi (auto 'Lainnya', bukan override) -> tanya balik.
+  if (kategori === 'Lainnya' && !entry.kategoriManual && inserted) {
+    await supabase
+      .from('users')
+      .update({ pending_tx_id: inserted.id, pending_at: new Date().toISOString() })
+      .eq('id', user.id)
+    lines.push(
+      '',
+      '❓ Masuk kategori apa? Balas salah satu:',
+      'Makan · Transport · Tagihan · Belanja',
+      'Kesehatan · Hiburan · Anak · Tabungan',
+      '(abaikan jika mau tetap di Lainnya)',
+    )
+    return respond(lines.join('\n'))
+  }
 
   // Umpan balik amplop: kalau kategori ini punya anggaran, tampilkan sisanya;
   // kalau tidak, jatuh ke anggaran keseluruhan (jika di-set).

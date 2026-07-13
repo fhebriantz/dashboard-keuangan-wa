@@ -7,6 +7,7 @@ export type ParsedEntry = {
   nama: string
   nominal: number
   kategori: string | null // null untuk pemasukan
+  kategoriManual: boolean // true jika user override lewat #kategori
 }
 
 // Kata kunci pemicu PEMASUKAN di awal pesan. Tanpa ini -> pengeluaran.
@@ -50,5 +51,11 @@ export function parseEntry(message: string): ParsedEntry | null {
   const kategori =
     tipe === 'pemasukan' ? null : kategoriOverride ?? detectCategory(parsed.nama)
 
-  return { tipe, nama: parsed.nama, nominal: parsed.nominal, kategori }
+  return {
+    tipe,
+    nama: parsed.nama,
+    nominal: parsed.nominal,
+    kategori,
+    kategoriManual: kategoriOverride != null,
+  }
 }

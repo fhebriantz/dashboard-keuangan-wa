@@ -116,6 +116,7 @@ Buka folder ini di VS Code: `code .`
 5. Ulangi langkah 1-3 untuk file-file migration berikutnya, **berurutan**:
    - `0002_tambah_tipe_transaksi.sql` → dukungan **pemasukan**
    - `0003_anggaran_kategori.sql` → **anggaran per kategori (amplop)**
+   - `0004_pending_kategori.sql` → bot **bertanya kategori** saat tak terdeteksi
 
 ### c. Ambil kunci API
 1. Menu kiri → **Project Settings** (ikon gerigi) → **API**.
@@ -270,6 +271,10 @@ Selain mencatat pengeluaran, pelanggan bisa mengetik (dengan atau tanpa `/`):
 | `... #kategori` | override kategori, mis. `beli obat 50rb #kesehatan` |
 | `masuk ...` / `pemasukan ...` / `+...` | mencatat **pemasukan**, mis. `masuk gaji 5000000` |
 | `anggaran <kat> <nominal>` | set amplop kategori, mis. `anggaran makan 2jt` |
+
+> Kalau kategori tak terdeteksi, bot mencatat sebagai **Lainnya** lalu bertanya
+> "masuk kategori apa?" — pelanggan cukup balas satu kata (mis. `makan`), dan
+> kategori transaksi tadi otomatis diperbarui.
 
 ### Laporan versi web
 Tiap keluarga punya halaman laporan yang bisa dibuka di HP:
