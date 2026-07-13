@@ -27,13 +27,21 @@ export async function POST(req: NextRequest) {
   }
 
   // -----------------------------------------------------------
-  // 2) Normalisasi payload (seragam antar-gateway).
+  // 2) Baca payload — dukung JSON maupun form-data.
+  //    Banyak gateway (Fonnte, Wablas) kirim application/x-www-form-urlencoded
+  //    atau multipart/form-data, bukan JSON.
   // -----------------------------------------------------------
-  let body: Record<string, unknown>
+  let body: Record<string, unknown> = {}
+  const contentType = req.headers.get('content-type') ?? ''
   try {
-    body = await req.json()
+    if (contentType.includes('application/json')) {
+      body = await req.json()
+    } else {
+      const form = await req.formData()
+      body = Object.fromEntries(form.entries())
+    }
   } catch {
-    return NextResponse.json({ error: 'invalid json' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid payload' }, { status: 400 })
   }
 
   const inbound = normalizeInbound(body)
