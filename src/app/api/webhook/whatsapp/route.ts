@@ -84,7 +84,13 @@ export async function POST(req: NextRequest) {
     : null
 
   if (!user || !family) {
-    return respond('Nomor Anda belum terdaftar. Silakan hubungi admin untuk berlangganan.')
+    // Hemat kuota: secara default JANGAN balas nomor tak terdaftar (bisa
+    // spam / salah sambung). Terima pesan (200) tapi diam. Set env
+    // REPLY_TO_UNREGISTERED=true kalau ingin menyapa calon pelanggan.
+    if (process.env.REPLY_TO_UNREGISTERED === 'true') {
+      return respond('Nomor Anda belum terdaftar. Silakan hubungi admin untuk berlangganan.')
+    }
+    return NextResponse.json({ ok: true, ignored: 'unregistered' })
   }
 
   // -----------------------------------------------------------
