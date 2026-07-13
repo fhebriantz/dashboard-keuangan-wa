@@ -1,5 +1,24 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { wibMonthStartISO, wibDayStartISO, formatTanggalWIB } from '@/lib/time'
+import { parseTransactionMessage } from '@/lib/parse-transaction'
+import { normalizeCategory, emojiOf } from '@/lib/category'
+import { monthlyData, type CategoryRow } from '@/lib/report-data'
+
+/**
+ * Deteksi perintah set anggaran per kategori:
+ *   "anggaran makan 2jt" / "budget transport 500rb" / "amplop tabungan 1jt"
+ */
+export function detectSetBudget(
+  message: string,
+): { kategori: string; nominal: number } | null {
+  const m = (message ?? '').trim().match(/^(anggaran|budget|amplop)\b\s*(.*)$/i)
+  if (!m) return null
+  const rest = m[2].trim()
+  if (!rest) return null
+  const parsed = parseTransactionMessage(rest) // nama = kategori, nominal
+  if (!parsed) return null
+  return { kategori: normalizeCategory(parsed.nama), nominal: parsed.nominal }
+}
 
 /**
  * Perintah bot. Sengaja menerima DUA gaya:
@@ -24,6 +43,18 @@ export function detectCommand(message: string): CommandType | null {
 const rupiah = (n: number) =>
   'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n))
 
+/** Satu baris ringkasan kategori: realisasi vs anggaran amplop. */
+function catLine(cat: CategoryRow): string {
+  const e = emojiOf(cat.kategori)
+  if (cat.budget != null) {
+    const sisa = cat.budget - cat.spent
+    const tail =
+      sisa >= 0 ? `(sisa ${rupiah(sisa)})` : `⚠️ lewat ${rupiah(-sisa)}`
+    return `${e} ${cat.kategori}: ${rupiah(cat.spent)} / ${rupiah(cat.budget)} ${tail}`
+  }
+  return `${e} ${cat.kategori}: ${rupiah(cat.spent)}`
+}
+
 /** Link laporan web keluarga, jika APP_URL di-set. */
 function reportLink(familyId: string): string | null {
   const base = process.env.APP_URL?.replace(/\/$/, '')
@@ -41,10 +72,13 @@ const HELP_TEXT =
   'Catat *pemasukan* — pakai kata "masuk":\n' +
   '• masuk gaji 5000000\n' +
   '• pemasukan bonus 1jt\n\n' +
+  'Atur *amplop* (jatah per kategori):\n' +
+  '• anggaran makan 2jt\n' +
+  '• anggaran transport 500rb\n\n' +
   'Perintah lain:\n' +
-  '• *total* — total & sisa anggaran bulan ini\n' +
-  '• *laporan* — rekap transaksi bulan ini\n' +
-  '• *hari* — pengeluaran hari ini\n' +
+  '• *total* — ringkasan + per kategori\n' +
+  '• *laporan* — rekap lengkap bulan ini\n' +
+  '• *hari* — pemasukan/pengeluaran hari ini\n' +
   '• *hapus* — batalkan catatan terakhir\n' +
   '• *bantuan* — tampilkan menu ini'
 
@@ -79,22 +113,14 @@ export async function handleCommand(
       return HELP_TEXT
 
     case 'total': {
-      const { pengeluaran, pemasukan } = await totalsSince(
-        supabase,
-        family.id,
-        wibMonthStartISO(),
-      )
-      const saldo = pemasukan - pengeluaran
+      const data = await monthlyData(supabase, family.id, wibMonthStartISO())
       let msg =
         `📊 *Bulan ini*\n` +
-        `💵 Pemasukan: ${rupiah(pemasukan)}\n` +
-        `💰 Pengeluaran: ${rupiah(pengeluaran)}\n` +
-        `🧮 Saldo: ${rupiah(saldo)}`
-      if (family.anggaran_bulanan != null) {
-        const sisa = Number(family.anggaran_bulanan) - pengeluaran
-        msg +=
-          `\n\nAnggaran: ${rupiah(Number(family.anggaran_bulanan))}\n` +
-          (sisa >= 0 ? `Sisa: ${rupiah(sisa)}` : `⚠️ Lewat ${rupiah(-sisa)}`)
+        `💵 Pemasukan: ${rupiah(data.pemasukan)}\n` +
+        `💰 Pengeluaran: ${rupiah(data.pengeluaran)}\n` +
+        `🧮 Saldo: ${rupiah(data.saldo)}`
+      if (data.categories.length > 0) {
+        msg += '\n\n*Per kategori:*\n' + data.categories.map(catLine).join('\n')
       }
       return msg
     }
@@ -113,33 +139,26 @@ export async function handleCommand(
     }
 
     case 'laporan': {
-      const monthStart = wibMonthStartISO()
-      const [{ data: list }, tot] = await Promise.all([
-        supabase
-          .from('transactions')
-          .select('nama_pengeluaran, nominal, created_at, tipe')
-          .eq('family_id', family.id)
-          .gte('created_at', monthStart)
-          .order('created_at', { ascending: false })
-          .limit(15),
-        totalsSince(supabase, family.id, monthStart),
-      ])
-      const rows = list ?? []
-      if (rows.length === 0) return '📋 Belum ada transaksi bulan ini.'
-      const lines = rows.map((r) => {
+      const data = await monthlyData(supabase, family.id, wibMonthStartISO())
+      if (data.rows.length === 0) return '📋 Belum ada transaksi bulan ini.'
+
+      let msg = '📋 *Rekap bulan ini*\n'
+
+      if (data.categories.length > 0) {
+        msg += '\n*Per kategori:*\n' + data.categories.map(catLine).join('\n') + '\n'
+      }
+
+      const rincian = data.rows.slice(0, 15).map((r) => {
         const tanda = r.tipe === 'pemasukan' ? '➕' : '➖'
         return `${formatTanggalWIB(r.created_at)}  ${tanda} ${r.nama_pengeluaran} — ${rupiah(Number(r.nominal))}`
       })
-      const saldo = tot.pemasukan - tot.pengeluaran
-      let msg =
-        `📋 *Rekap bulan ini* (15 terbaru)\n\n${lines.join('\n')}\n\n` +
-        `💵 Pemasukan: ${rupiah(tot.pemasukan)}\n` +
-        `💰 Pengeluaran: ${rupiah(tot.pengeluaran)}\n` +
-        `🧮 Saldo: ${rupiah(saldo)}`
-      if (family.anggaran_bulanan != null) {
-        const sisa = Number(family.anggaran_bulanan) - tot.pengeluaran
-        msg += sisa >= 0 ? `\nSisa anggaran: ${rupiah(sisa)}` : `\n⚠️ Lewat ${rupiah(-sisa)}`
-      }
+      msg += `\n*Rincian (15 terbaru):*\n${rincian.join('\n')}\n`
+
+      msg +=
+        `\n💵 Pemasukan: ${rupiah(data.pemasukan)}\n` +
+        `💰 Pengeluaran: ${rupiah(data.pengeluaran)}\n` +
+        `🧮 Saldo: ${rupiah(data.saldo)}`
+
       const link = reportLink(family.id)
       if (link) msg += `\n\n🔗 Laporan lengkap: ${link}`
       return msg

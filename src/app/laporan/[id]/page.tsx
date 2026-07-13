@@ -1,5 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { wibMonthStartISO, formatTanggalWIB, namaBulanWIB } from '@/lib/time'
+import { monthlyData } from '@/lib/report-data'
+import { emojiOf } from '@/lib/category'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,10 +9,9 @@ const rupiah = (n: number) =>
   'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n))
 
 /**
- * Laporan read-only per keluarga. Diakses lewat link berisi family_id
- * (UUID, tidak bisa ditebak). Untuk produksi, bisa diganti token khusus
- * yang bisa dicabut. Halaman ini pakai service_role di server dan HANYA
- * menampilkan data keluarga pada id tsb — data keluarga lain tak ikut.
+ * Laporan read-only per keluarga (buka di HP). Diakses lewat link berisi
+ * family_id (UUID, tidak bisa ditebak). Pakai service_role di server dan
+ * HANYA menampilkan data keluarga pada id tsb.
  */
 export default async function LaporanPage({
   params,
@@ -36,25 +37,8 @@ export default async function LaporanPage({
     )
   }
 
-  const monthStart = wibMonthStartISO()
-  const { data: txs } = await supabase
-    .from('transactions')
-    .select('nama_pengeluaran, nominal, created_at, tipe')
-    .eq('family_id', id)
-    .gte('created_at', monthStart)
-    .order('created_at', { ascending: false })
-
-  const rows = txs ?? []
-  const pemasukan = rows
-    .filter((r) => r.tipe === 'pemasukan')
-    .reduce((s, r) => s + Number(r.nominal), 0)
-  const pengeluaran = rows
-    .filter((r) => r.tipe !== 'pemasukan')
-    .reduce((s, r) => s + Number(r.nominal), 0)
-  const saldoKas = pemasukan - pengeluaran
-  const anggaran = family.anggaran_bulanan != null ? Number(family.anggaran_bulanan) : null
-  const sisa = anggaran != null ? anggaran - pengeluaran : null
-  const persen = anggaran && anggaran > 0 ? Math.min(100, (pengeluaran / anggaran) * 100) : 0
+  const data = await monthlyData(supabase, id, wibMonthStartISO())
+  const { pemasukan, pengeluaran, saldo, categories, rows } = data
 
   return (
     <main style={wrap}>
@@ -73,45 +57,63 @@ export default async function LaporanPage({
           <div style={{ ...statBig, color: '#dc2626' }}>{rupiah(pengeluaran)}</div>
         </div>
       </div>
-
       <div style={cardsRow}>
         <div style={statCard}>
           <div style={statLabel}>Saldo (pemasukan - pengeluaran)</div>
-          <div style={{ ...statBig, color: saldoKas >= 0 ? '#16a34a' : '#dc2626' }}>
-            {rupiah(saldoKas)}
+          <div style={{ ...statBig, color: saldo >= 0 ? '#16a34a' : '#dc2626' }}>
+            {rupiah(saldo)}
           </div>
         </div>
-        {anggaran != null && (
-          <div style={statCard}>
-            <div style={statLabel}>Sisa anggaran</div>
-            <div style={{ ...statBig, color: (sisa ?? 0) >= 0 ? '#16a34a' : '#dc2626' }}>
-              {rupiah(sisa ?? 0)}
-            </div>
-          </div>
-        )}
       </div>
 
-      {anggaran != null && (
-        <div style={{ margin: '4px 0 20px' }}>
-          <div style={barTrack}>
-            <div
-              style={{
-                ...barFill,
-                width: `${persen}%`,
-                background: persen >= 100 ? '#dc2626' : persen >= 80 ? '#f59e0b' : '#16a34a',
-              }}
-            />
+      {/* ---------- Amplop per kategori ---------- */}
+      {categories.length > 0 && (
+        <>
+          <h2 style={sectionH2}>Anggaran per Kategori</h2>
+          <div style={{ display: 'grid', gap: 14 }}>
+            {categories.map((c) => {
+              const persen =
+                c.budget && c.budget > 0 ? Math.min(100, (c.spent / c.budget) * 100) : 0
+              const sisa = c.budget != null ? c.budget - c.spent : null
+              const warna = persen >= 100 ? '#dc2626' : persen >= 80 ? '#f59e0b' : '#16a34a'
+              return (
+                <div key={c.kategori}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                    <span style={{ fontWeight: 500 }}>
+                      {emojiOf(c.kategori)} {c.kategori}
+                    </span>
+                    <span>
+                      {rupiah(c.spent)}
+                      {c.budget != null && (
+                        <span style={{ color: '#a1a1aa' }}> / {rupiah(c.budget)}</span>
+                      )}
+                    </span>
+                  </div>
+                  {c.budget != null ? (
+                    <>
+                      <div style={barTrack}>
+                        <div style={{ ...barFill, width: `${persen}%`, background: warna }} />
+                      </div>
+                      <div style={{ fontSize: 12, color: (sisa ?? 0) >= 0 ? '#71717a' : '#dc2626', marginTop: 3 }}>
+                        {(sisa ?? 0) >= 0
+                          ? `Sisa ${rupiah(sisa ?? 0)}`
+                          : `⚠️ Lewat ${rupiah(-(sisa ?? 0))}`}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 12, color: '#a1a1aa', marginTop: 3 }}>
+                      Belum ada anggaran
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
-          <div style={{ fontSize: 12, color: '#71717a', marginTop: 4 }}>
-            Terpakai {Math.round(persen)}% dari {rupiah(anggaran)}
-          </div>
-        </div>
+        </>
       )}
 
-      <h2 style={{ fontSize: 15, color: '#52525b', margin: '8px 0' }}>
-        Rincian ({rows.length} transaksi)
-      </h2>
-
+      {/* ---------- Rincian ---------- */}
+      <h2 style={sectionH2}>Rincian ({rows.length} transaksi)</h2>
       {rows.length === 0 ? (
         <p style={{ color: '#71717a', fontSize: 14 }}>Belum ada transaksi bulan ini.</p>
       ) : (
@@ -123,7 +125,8 @@ export default async function LaporanPage({
                 <div>
                   <div style={{ fontWeight: 500 }}>{r.nama_pengeluaran}</div>
                   <div style={{ fontSize: 12, color: '#a1a1aa' }}>
-                    {formatTanggalWIB(r.created_at)} · {masuk ? 'pemasukan' : 'pengeluaran'}
+                    {formatTanggalWIB(r.created_at)} ·{' '}
+                    {masuk ? 'pemasukan' : r.kategori || 'Lainnya'}
                   </div>
                 </div>
                 <div style={{ fontWeight: 600, color: masuk ? '#16a34a' : '#dc2626' }}>
@@ -150,7 +153,7 @@ const wrap: React.CSSProperties = {
   padding: '28px 18px 48px',
   color: '#18181b',
 }
-const cardsRow: React.CSSProperties = { display: 'flex', gap: 12, marginBottom: 14 }
+const cardsRow: React.CSSProperties = { display: 'flex', gap: 12, marginBottom: 12 }
 const statCard: React.CSSProperties = {
   flex: 1,
   border: '1px solid #e4e4e7',
@@ -159,11 +162,17 @@ const statCard: React.CSSProperties = {
 }
 const statLabel: React.CSSProperties = { fontSize: 12, color: '#71717a', marginBottom: 6 }
 const statBig: React.CSSProperties = { fontSize: 19, fontWeight: 700 }
+const sectionH2: React.CSSProperties = {
+  fontSize: 15,
+  color: '#52525b',
+  margin: '26px 0 12px',
+}
 const barTrack: React.CSSProperties = {
   height: 8,
   background: '#f4f4f5',
   borderRadius: 999,
   overflow: 'hidden',
+  marginTop: 6,
 }
 const barFill: React.CSSProperties = { height: '100%', borderRadius: 999 }
 const txItem: React.CSSProperties = {

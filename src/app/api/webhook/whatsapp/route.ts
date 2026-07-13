@@ -4,7 +4,9 @@ import { normalizePhone } from '@/lib/phone'
 import { parseEntry } from '@/lib/parse-entry'
 import { normalizeInbound } from '@/lib/whatsapp/inbound'
 import { sendReply } from '@/lib/whatsapp/outbound'
-import { detectCommand, handleCommand } from '@/lib/whatsapp/commands'
+import { detectCommand, handleCommand, detectSetBudget } from '@/lib/whatsapp/commands'
+import { emojiOf } from '@/lib/category'
+import { wibMonthStartISO } from '@/lib/time'
 
 // service_role + supabase-js butuh runtime Node (bukan Edge murni).
 export const runtime = 'nodejs'
@@ -113,6 +115,22 @@ export async function POST(req: NextRequest) {
     return respond(text)
   }
 
+  // Set anggaran amplop per kategori: "anggaran makan 2jt"
+  const budgetCmd = detectSetBudget(inbound!.message)
+  if (budgetCmd) {
+    const { error } = await supabase.from('category_budgets').upsert(
+      { family_id: family.id, kategori: budgetCmd.kategori, nominal: budgetCmd.nominal },
+      { onConflict: 'family_id,kategori' },
+    )
+    if (error) {
+      console.error('[webhook] set budget error:', error.message)
+      return respond('Gagal menyimpan anggaran. Coba lagi sebentar.')
+    }
+    return respond(
+      `✅ Anggaran *${budgetCmd.kategori}* diset ${rupiah(budgetCmd.nominal)}/bulan.`,
+    )
+  }
+
   // -----------------------------------------------------------
   // 6) Kalau bukan perintah, catat sebagai pemasukan/pengeluaran.
   // -----------------------------------------------------------
@@ -138,6 +156,7 @@ export async function POST(req: NextRequest) {
     nama_pengeluaran: entry.nama,
     nominal: entry.nominal,
     tipe: entry.tipe,
+    kategori: entry.kategori,
   })
 
   if (insErr) {
@@ -155,22 +174,49 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  const kategori = entry.kategori ?? 'Lainnya'
   const lines = [
     `✅ Tercatat untuk Keluarga *${family.nama_keluarga}*`,
     `📝 ${entry.nama}`,
-    `💰 ${rupiah(entry.nominal)}`,
+    `${emojiOf(kategori)} ${kategori} · ${rupiah(entry.nominal)}`,
   ]
 
-  if (family.anggaran_bulanan != null) {
+  // Umpan balik amplop: kalau kategori ini punya anggaran, tampilkan sisanya;
+  // kalau tidak, jatuh ke anggaran keseluruhan (jika di-set).
+  const monthStart = wibMonthStartISO()
+  const [{ data: budgetRow }, { data: catSpent }] = await Promise.all([
+    supabase
+      .from('category_budgets')
+      .select('nominal')
+      .eq('family_id', family.id)
+      .eq('kategori', kategori)
+      .maybeSingle(),
+    supabase
+      .from('transactions')
+      .select('nominal')
+      .eq('family_id', family.id)
+      .eq('kategori', kategori)
+      .eq('tipe', 'pengeluaran')
+      .gte('created_at', monthStart),
+  ])
+
+  if (budgetRow) {
+    const spent = (catSpent ?? []).reduce((s, r) => s + Number(r.nominal), 0)
+    const sisa = Number(budgetRow.nominal) - spent
+    lines.push(
+      sisa >= 0
+        ? `📊 Sisa amplop ${kategori}: ${rupiah(sisa)}`
+        : `⚠️ Amplop ${kategori} lewat ${rupiah(-sisa)}`,
+    )
+  } else if (family.anggaran_bulanan != null) {
     const { data: spent } = await supabase.rpc('family_spent_this_month', {
       p_family_id: family.id,
     })
-    const totalSpent = Number(spent ?? 0)
-    const sisa = Number(family.anggaran_bulanan) - totalSpent
+    const sisa = Number(family.anggaran_bulanan) - Number(spent ?? 0)
     lines.push(
       sisa >= 0
         ? `📊 Sisa anggaran bulan ini: ${rupiah(sisa)}`
-        : `⚠️ Anggaran bulan ini terlampaui ${rupiah(Math.abs(sisa))}`,
+        : `⚠️ Anggaran bulan ini terlampaui ${rupiah(-sisa)}`,
     )
   }
 

@@ -113,8 +113,9 @@ Buka folder ini di VS Code: `code .`
    **copy semua isinya**, tempel ke SQL Editor.
 3. Klik **Run** (atau `Ctrl/Cmd + Enter`).
 4. Kalau muncul **Success. No rows returned**, berarti tabel sudah jadi. 🎉
-5. Ulangi langkah 1-3 untuk file `0002_tambah_tipe_transaksi.sql` (menambah
-   dukungan **pemasukan**). Jalankan berurutan setelah `0001`.
+5. Ulangi langkah 1-3 untuk file-file migration berikutnya, **berurutan**:
+   - `0002_tambah_tipe_transaksi.sql` → dukungan **pemasukan**
+   - `0003_anggaran_kategori.sql` → **anggaran per kategori (amplop)**
 
 ### c. Ambil kunci API
 1. Menu kiri → **Project Settings** (ikon gerigi) → **API**.
@@ -265,8 +266,10 @@ Selain mencatat pengeluaran, pelanggan bisa mengetik (dengan atau tanpa `/`):
 | `laporan` / `rekap` | rincian transaksi bulan ini (15 terbaru) |
 | `hari` / `today` | pengeluaran hari ini |
 | `hapus` / `batal` | batalkan catatan terakhir milik sendiri |
-| *(teks biasa)* | mencatat **pengeluaran**, mis. `Bensin 50000` |
+| *(teks biasa)* | mencatat **pengeluaran** (kategori otomatis), mis. `Bensin 50000` |
+| `... #kategori` | override kategori, mis. `beli obat 50rb #kesehatan` |
 | `masuk ...` / `pemasukan ...` / `+...` | mencatat **pemasukan**, mis. `masuk gaji 5000000` |
+| `anggaran <kat> <nominal>` | set amplop kategori, mis. `anggaran makan 2jt` |
 
 ### Laporan versi web
 Tiap keluarga punya halaman laporan yang bisa dibuka di HP:
