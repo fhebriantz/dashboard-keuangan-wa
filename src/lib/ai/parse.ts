@@ -12,20 +12,20 @@ import { normalizeCategory } from '@/lib/category'
  *  - Provider pluggable. Contoh: Google Gemini (free tier, akun PRIBADI).
  */
 
+// Prompt ringkas (hemat token input) tapi tetap jelas.
 const PROMPT =
-  'Ekstrak SATU transaksi keuangan dari pesan WhatsApp berikut. ' +
-  'Balas HANYA JSON: {"tipe","nama","nominal","kategori"}. ' +
-  'tipe = "pemasukan" jika uang masuk (gaji, bonus, terima, transfer masuk), selain itu "pengeluaran". ' +
-  'nominal = angka rupiah bulat (mis. "dua puluh ribu" -> 20000, "50rb" -> 50000). Jika tak ada nominal jelas, nominal = 0. ' +
-  'kategori (khusus pengeluaran) salah satu: Makan, Transport, Tagihan, Belanja, Kesehatan, Hiburan, Anak, Tabungan, Lainnya. Untuk pemasukan, kategori = null. ' +
-  'nama = deskripsi singkat.\n\nPesan: '
+  'Ekstrak transaksi keuangan jadi JSON {"tipe","nama","nominal","kategori"}. ' +
+  'tipe: "pemasukan" jika uang masuk (gaji/bonus/terima), selain itu "pengeluaran". ' +
+  'nominal: rupiah bulat (integer); 0 jika tak jelas. ' +
+  'kategori (khusus pengeluaran): Makan/Transport/Tagihan/Belanja/Kesehatan/Hiburan/Anak/Tabungan/Lainnya; pemasukan=null. ' +
+  'nama: singkat. Pesan: '
 
-// Model default (varian "lite" — cepat & murah). Bisa dioverride/ditambah lewat
-// GEMINI_MODELS (dipisah koma). Diurut dari yang diutamakan ke cadangan.
+// Model default — hasil verifikasi live (cepat, aktif, hemat). Diurut
+// prioritas → cadangan. Override/tambah lewat GEMINI_MODELS (dipisah koma).
 const DEFAULT_MODELS = [
   'gemini-flash-lite-latest',
   'gemini-3.1-flash-lite',
-  'gemini-2.0-flash-lite',
+  'gemini-3-flash-preview',
 ]
 
 function modelChain(): string[] {
@@ -37,12 +37,15 @@ function modelChain(): string[] {
 }
 
 function toEntry(text: string): ParsedEntry | null {
-  let obj: Record<string, unknown>
+  let parsed: unknown
   try {
-    obj = JSON.parse(text)
+    parsed = JSON.parse(text)
   } catch {
     return null
   }
+  // Beberapa model membungkus dalam array [{...}] — ambil elemen pertama.
+  const obj = (Array.isArray(parsed) ? parsed[0] : parsed) as Record<string, unknown>
+  if (!obj || typeof obj !== 'object') return null
   const nominal = Number(obj.nominal)
   if (!Number.isFinite(nominal) || nominal <= 0) return null
   const tipe: EntryType = obj.tipe === 'pemasukan' ? 'pemasukan' : 'pengeluaran'
@@ -70,7 +73,12 @@ async function callModel(
         signal: ctrl.signal,
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: PROMPT + message }] }],
-          generationConfig: { responseMimeType: 'application/json', temperature: 0 },
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0,
+            maxOutputTokens: 120, // JSON kita kecil -> batasi output (hemat token)
+            thinkingConfig: { thinkingBudget: 0 }, // matikan "thinking" -> hemat + cepat + tak kepotong
+          },
         }),
       },
     )
