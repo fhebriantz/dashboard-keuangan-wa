@@ -1,4 +1,4 @@
-import ThemeToggle from '../laporan/[id]/ThemeToggle'
+import MarketingNav from '../MarketingNav'
 
 export const dynamic = 'force-static'
 
@@ -6,14 +6,6 @@ export const metadata = {
   title: 'Panduan Pemakaian — Dashboard Keuangan WA',
   description: 'Cara mencatat keuangan lewat WhatsApp: pengeluaran, pemasukan, amplop, dan contoh kasus.',
 }
-
-const THEME_INIT = `(function(){try{var t=localStorage.getItem('laporan-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}})();`
-const THEME_CSS = `
-:root{--bg:#f8fafc;--surface:#ffffff;--text:#18181b;--muted:#71717a;--border:#e4e4e7;--track:#f1f5f9;--accent:#16a34a}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1220;--surface:#0f172a;--text:#e5e7eb;--muted:#94a3b8;--border:#1e293b;--track:#111c30;--accent:#22c55e}}
-:root[data-theme="dark"]{--bg:#0b1220;--surface:#0f172a;--text:#e5e7eb;--muted:#94a3b8;--border:#1e293b;--track:#111c30;--accent:#22c55e}
-body{background:var(--bg)}
-`
 
 // Contoh chat (blok monospace).
 function Chat({ lines }: { lines: Array<{ from: 'u' | 'b'; text: string }> }) {
@@ -42,17 +34,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function PanduanPage() {
   return (
-    <main style={wrap}>
-      <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
-      <style dangerouslySetInnerHTML={{ __html: THEME_CSS }} />
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-        <div>
-          <div style={{ color: 'var(--muted)', fontSize: 13 }}>Panduan Pemakaian</div>
-          <h1 style={{ fontSize: 26, margin: '2px 0 0' }}>Dashboard Keuangan WA</h1>
-        </div>
-        <ThemeToggle />
-      </div>
+    <>
+      <MarketingNav />
+      <main style={wrap}>
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>Panduan Pemakaian</div>
+        <h1 style={{ fontSize: 26, margin: '2px 0 14px' }}>Dashboard Keuangan WA</h1>
       <p style={{ color: 'var(--muted)', marginTop: 10 }}>
         Catat keuangan bersama pasangan, keluarga, atau tim — cukup lewat chat WhatsApp.
         Kirim pesan ke nomor bot, langsung tercatat.
@@ -144,7 +130,8 @@ export default function PanduanPage() {
       <p style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12, marginTop: 36 }}>
         Dashboard Keuangan WA
       </p>
-    </main>
+      </main>
+    </>
   )
 }
 

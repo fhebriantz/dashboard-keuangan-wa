@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPricingConfig, getPackages, rupiah, hitungTotal, type PricingConfig, type Package } from '@/lib/pricing'
-import ThemeToggle from './laporan/[id]/ThemeToggle'
+import MarketingNav from './MarketingNav'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,15 +9,6 @@ export const metadata = {
   title: 'Dashboard Keuangan WA — Catat keuangan keluarga lewat WhatsApp',
   description: 'Catat pemasukan & pengeluaran keluarga cukup dengan chat WhatsApp. Kategori otomatis, sistem amplop, dan laporan lengkap.',
 }
-
-const THEME_INIT = `(function(){try{var t=localStorage.getItem('laporan-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}})();`
-const THEME_CSS = `
-:root{--bg:#f8fafc;--surface:#ffffff;--soft:#f1f5f9;--text:#0f172a;--muted:#64748b;--border:#e4e4e7;--accent:#16a34a;--accent2:#0ea5e9}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1220;--surface:#0f172a;--soft:#111c30;--text:#e5e7eb;--muted:#94a3b8;--border:#1e293b;--accent:#22c55e;--accent2:#38bdf8}}
-:root[data-theme="dark"]{--bg:#0b1220;--surface:#0f172a;--soft:#111c30;--text:#e5e7eb;--muted:#94a3b8;--border:#1e293b;--accent:#22c55e;--accent2:#38bdf8}
-body{background:var(--bg)}
-a{color:inherit}
-`
 
 const FITUR = [
   { icon: '💬', title: 'Catat lewat chat', desc: 'Ketik "Bensin 50rb" ke WhatsApp — langsung tercatat. Tanpa install aplikasi.' },
@@ -53,20 +44,7 @@ export default async function LandingPage() {
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', color: 'var(--text)', minHeight: '100vh' }}>
-      <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
-      <style dangerouslySetInnerHTML={{ __html: THEME_CSS }} />
-
-      {/* Nav */}
-      <nav style={{ ...container, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', gap: 12 }}>
-        <div style={{ fontWeight: 800, fontSize: 18 }}>💰 KeuanganWA</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <a href="#fitur" style={navLink}>Fitur</a>
-          <a href="#harga" style={navLink}>Harga</a>
-          <Link href="/panduan" style={navLink}>Panduan</Link>
-          <Link href="/daftar" style={btnPrimarySm}>Daftar</Link>
-          <ThemeToggle />
-        </div>
-      </nav>
+      <MarketingNav />
 
       {/* Hero */}
       <section style={{ ...container, padding: '40px 20px 20px', display: 'grid', gap: 40, gridTemplateColumns: '1fr', alignItems: 'center' }}>
@@ -217,7 +195,6 @@ function Bubble({ side, text }: { side: 'left' | 'right'; text: string }) {
 
 /* ---------- styles ---------- */
 const container: React.CSSProperties = { maxWidth: 1040, margin: '0 auto', width: '100%' }
-const navLink: React.CSSProperties = { color: 'var(--muted)', textDecoration: 'none', fontSize: 14, fontWeight: 500 }
 const pill: React.CSSProperties = {
   display: 'inline-block',
   background: 'var(--soft)',
@@ -236,7 +213,6 @@ const btnPrimary: React.CSSProperties = {
   textDecoration: 'none',
   fontSize: 15,
 }
-const btnPrimarySm: React.CSSProperties = { ...btnPrimary, padding: '8px 14px', fontSize: 14 }
 const btnGhost: React.CSSProperties = {
   background: 'var(--surface)',
   color: 'var(--text)',

@@ -1,19 +1,11 @@
 import Link from 'next/link'
 import ReportCharts from '../laporan/[id]/ReportCharts'
-import ThemeToggle from '../laporan/[id]/ThemeToggle'
+import MarketingNav from '../MarketingNav'
 import type { ChartData } from '@/lib/report-data'
 
 export const dynamic = 'force-static'
 
 export const metadata = { title: 'Demo Laporan — Dashboard Keuangan WA' }
-
-const THEME_INIT = `(function(){try{var t=localStorage.getItem('laporan-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}})();`
-const THEME_CSS = `
-:root{--bg:#f8fafc;--surface:#ffffff;--text:#0f172a;--muted:#64748b;--border:#e4e4e7;--track:#f1f5f9}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1220;--surface:#0f172a;--text:#e5e7eb;--muted:#94a3b8;--border:#1e293b;--track:#111c30}}
-:root[data-theme="dark"]{--bg:#0b1220;--surface:#0f172a;--text:#e5e7eb;--muted:#94a3b8;--border:#1e293b;--track:#111c30}
-body{background:var(--bg)}
-`
 
 const rupiah = (n: number) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n))
 
@@ -68,18 +60,11 @@ export default function DemoPage() {
   const { chart, pemasukan, pengeluaran, saldo } = buildDemo()
 
   return (
-    <main style={wrap}>
-      <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
-      <style dangerouslySetInnerHTML={{ __html: THEME_CSS }} />
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-        <div>
-          <Link href="/" style={{ color: 'var(--muted)', fontSize: 13, textDecoration: 'none' }}>← Beranda</Link>
-          <h1 style={{ fontSize: 22, margin: '6px 0 0' }}>Demo Laporan</h1>
-          <div style={{ color: 'var(--muted)', fontSize: 13 }}>Data contoh · Juli 2026</div>
-        </div>
-        <ThemeToggle />
-      </div>
+    <>
+      <MarketingNav />
+      <main style={wrap}>
+        <h1 style={{ fontSize: 22, margin: '0 0 2px' }}>Demo Laporan</h1>
+        <div style={{ color: 'var(--muted)', fontSize: 13 }}>Data contoh · Juli 2026</div>
 
       <div style={{ ...cardsRow, marginTop: 16 }}>
         <div style={statCard}><div style={statLabel}>Pemasukan</div><div style={{ ...statBig, color: '#16a34a' }}>{rupiah(pemasukan)}</div></div>
@@ -95,7 +80,8 @@ export default function DemoPage() {
         <Link href="/daftar" style={cta}>Mau punya laporan seperti ini? Daftar →</Link>
       </div>
       <p style={{ textAlign: 'center', color: 'var(--muted)', fontSize: 12, marginTop: 20 }}>Dashboard Keuangan WA · data contoh</p>
-    </main>
+      </main>
+    </>
   )
 }
 

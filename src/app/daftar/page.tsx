@@ -1,6 +1,7 @@
 import { submitRegistration } from './actions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPackages, getPricingConfig, getPackage, hitungTotal, rupiah } from '@/lib/pricing'
+import MarketingNav from '../MarketingNav'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,7 +31,9 @@ export default async function DaftarPage({
     const total = hitungTotal(config, jumlah, bulan)
 
     return (
-      <main style={wrap}>
+      <>
+        <MarketingNav />
+        <main style={wrap}>
         <div style={{ textAlign: 'center', fontSize: 40 }}>🎉</div>
         <h1 style={{ fontSize: 22, textAlign: 'center', marginTop: 8 }}>
           Pendaftaran diterima!
@@ -58,7 +61,8 @@ export default async function DaftarPage({
             Admin akan mengaktifkan langganan kamu.
           </p>
         </div>
-      </main>
+        </main>
+      </>
     )
   }
 
@@ -69,9 +73,11 @@ export default async function DaftarPage({
   ])
 
   return (
-    <main style={wrap}>
+    <>
+      <MarketingNav />
+      <main style={wrap}>
       <h1 style={{ fontSize: 24, margin: 0 }}>Daftar Langganan</h1>
-      <p style={{ color: '#71717a', fontSize: 14, marginTop: 6 }}>
+      <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 6 }}>
         Catat keuangan bersama pasangan, keluarga, atau tim — cukup lewat chat WhatsApp.
       </p>
       <p style={{ fontSize: 13, color: '#16a34a', fontWeight: 600 }}>
@@ -88,7 +94,7 @@ export default async function DaftarPage({
 
         <div style={card}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>Anggota</div>
-          <p style={{ fontSize: 12, color: '#71717a', marginTop: 0 }}>
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 0 }}>
             Isi minimal satu. Nomor inilah yang dipakai chat ke bot.
           </p>
           <div style={{ display: 'grid', gap: 10 }}>
@@ -124,7 +130,8 @@ export default async function DaftarPage({
           Daftar Sekarang
         </button>
       </form>
-    </main>
+      </main>
+    </>
   )
 }
 
@@ -134,17 +141,20 @@ const wrap: React.CSSProperties = {
   maxWidth: 460,
   margin: '0 auto',
   padding: '28px 18px 48px',
-  color: '#18181b',
+  color: 'var(--text)',
+  minHeight: '100vh',
 }
-const card: React.CSSProperties = { border: '1px solid #e4e4e7', borderRadius: 12, padding: 16 }
+const card: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--surface)' }
 const h2: React.CSSProperties = { fontSize: 16, margin: '0 0 4px' }
 const lab: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 14, fontWeight: 500 }
 const inp: React.CSSProperties = {
   padding: '10px 12px',
-  border: '1px solid #d4d4d8',
+  border: '1px solid var(--border)',
   borderRadius: 8,
   fontSize: 15,
   fontWeight: 400,
+  background: 'var(--surface)',
+  color: 'var(--text)',
 }
 const btn: React.CSSProperties = {
   padding: '12px',
@@ -157,7 +167,7 @@ const btn: React.CSSProperties = {
   cursor: 'pointer',
 }
 const rekBox: React.CSSProperties = {
-  background: '#f4f4f5',
+  background: 'var(--track)',
   borderRadius: 8,
   padding: '12px 14px',
   fontSize: 15,
