@@ -191,13 +191,21 @@ Semua perubahan amplop (set/tambah/pindah/hapus) tercatat di bagian
 
 ---
 
-### ✨ Kalau AI diaktifkan (opsional)
-Kalau admin mengaktifkan AI, kamu bisa lebih bebas:
-- **Bahasa bebas** — mis. "geser 50rb dari jajan ke transport", "amplop makan hapus
-  aja", "laporan bulan ini dong" tetap dimengerti.
-- **Foto struk** 📷 — kirim foto struk belanja, totalnya otomatis tercatat.
+### 💡 Biasakan pakai format singkat (paling cepat)
+Cara **utama & tercepat** adalah perintah singkat seperti di panduan ini —
+`Bensin 50rb`, `amplop makan 2jt`, `total`, `laporan`, `hapus amplop makan`.
+Ini **langsung diproses, instan, dan gratis**. Jadikan kebiasaan sehari-hari. 👍
 
-Tanpa AI pun semua tetap jalan dengan perintah biasa di atas.
+### ✨ Jaring pengaman: kalau lupa format (opsional, kalau AI aktif)
+Kalau admin mengaktifkan fitur pintar, bot **masih berusaha paham** saat kamu:
+- **Lupa format / ketik kalimat panjang** — mis. "geser 50rb dari jajan ke
+  transport" atau "amplop makan hapus aja".
+- **Kirim foto struk** 📷 — totalnya dibaca otomatis.
+
+> Ini cuma **cadangan** kalau sesekali lupa — **sedikit lebih lambat**. Untuk
+> pemakaian rutin, tetap pakai **format singkat** di atas biar cepat & ringan.
+
+Tanpa fitur ini pun, semua perintah singkat tetap jalan seperti biasa.
 
 ---
 

@@ -83,7 +83,13 @@ export default function PanduanPage() {
         ]} />
         <p style={p}><b>Menambah amplop:</b> kirim ulang angka lebih besar (<code style={code}>amplop transport 1jt</code>).</p>
         <p style={muted}>Kata <code style={code}>amplop</code>, <code style={code}>anggaran</code>, dan <code style={code}>budget</code> sama saja.</p>
-        <p style={p}><b>Pindah antar amplop:</b> <code style={code}>pindah makan transport 500rb</code> — kurangi Makan, tambah Transport.</p>
+        <p style={p}><b>Pindah antar amplop:</b> <code style={code}>pindah makan transport 500rb</code>.</p>
+        <p style={p}><b>Hapus amplop:</b> <code style={code}>hapus amplop makan</code>.</p>
+        <div style={callout}>
+          💡 <b>Pakai format singkat</b> seperti di atas — paling cepat, instan, & ringan.
+          Kalau fitur pintar aktif, kalimat panjang ("amplop makan hapus aja") & foto struk
+          juga dimengerti, tapi <b>sedikit lebih lambat</b> — jadi untuk sehari-hari, biasakan format singkat.
+        </div>
       </Section>
 
       <Section title="🎯 Contoh lengkap: baru gajian">
