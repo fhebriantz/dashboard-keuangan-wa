@@ -143,6 +143,26 @@ Kalau amplop terlampaui, bot memperingatkan (tapi tetap dicatat — hanya alarm)
 
 > Kata lain yang juga bisa: `budget makan 2jt` atau `amplop makan 2jt`.
 
+### Menambah / mengisi ulang amplop
+Amplop habis di tengah bulan? Tinggal **kirim ulang dengan angka baru** —
+angka terakhir yang berlaku:
+```
+anggaran transport 700000     → jatah awal Rp 700.000
+anggaran transport 1000000    → dinaikkan jadi Rp 1.000.000 (top-up +300rb)
+```
+Sisa amplop & "Total amplop" langsung menyesuaikan.
+
+> Catatan: menaikkan amplop = mengubah **rencana**, jadi **tidak** mengurangi
+> saldo dan **tidak** tercatat sebagai transaksi. Uang "surplus" (pemasukan yang
+> belum dialokasikan) otomatis menutup kenaikan itu.
+
+### Memindahkan jatah antar amplop
+Mau geser jatah dari satu pos ke pos lain? Lakukan dua perintah:
+```
+anggaran makan 1500000        → turunkan Makan (dari 2jt) −500rb
+anggaran transport 1200000    → naikkan Transport +500rb
+```
+
 ---
 
 ## 6. 🎯 Contoh lengkap: baru gajian
