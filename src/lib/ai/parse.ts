@@ -20,11 +20,12 @@ const PROMPT =
   'kategori (khusus pengeluaran): Makan/Transport/Tagihan/Belanja/Kesehatan/Hiburan/Anak/Tabungan/Lainnya; pemasukan=null. ' +
   'nama: singkat. Pesan: '
 
-// Model default — hasil verifikasi live (cepat, aktif, hemat). Diurut
-// prioritas → cadangan. Override/tambah lewat GEMINI_MODELS (dipisah koma).
+// Model default — diurut prioritas → cadangan. Utamakan yang kuota harian
+// (RPD) paling besar: gemini-3.1-flash-lite = 500/hari (sisanya ~20/hari).
+// Override/tambah lewat GEMINI_MODELS (dipisah koma).
 const DEFAULT_MODELS = [
+  'gemini-3.1-flash-lite', // RPD 500 — paling lega
   'gemini-flash-lite-latest',
-  'gemini-3.1-flash-lite',
   'gemini-3-flash-preview',
 ]
 
