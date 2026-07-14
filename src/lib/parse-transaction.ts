@@ -23,6 +23,8 @@ export type ParsedTransaction = {
  *
  * @returns hasil parse, atau null jika tak ada nominal valid / nama kosong.
  */
+import { parseIndoNumber } from './number-words'
+
 export function parseTransactionMessage(text: string): ParsedTransaction | null {
   const cleaned = (text ?? '').trim()
   if (!cleaned) return null
@@ -54,9 +56,21 @@ export function parseTransactionMessage(text: string): ParsedTransaction | null 
     last = { value, start: match.index, end: re.lastIndex }
   }
 
-  if (!last) return null
+  // Tidak ada angka digit -> coba angka dalam kata ("dua puluh ribu").
+  if (!last) {
+    const words = parseIndoNumber(cleaned)
+    if (!words) return null
+    const namaW = cleaned
+      .replace(words.matched, ' ')
+      .replace(/\brp\b\.?/gi, ' ')
+      .replace(/[.,\-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+    if (!namaW) return null
+    return { nama: namaW, nominal: words.nominal }
+  }
 
-  let nama = (cleaned.slice(0, last.start) + ' ' + cleaned.slice(last.end))
+  const nama = (cleaned.slice(0, last.start) + ' ' + cleaned.slice(last.end))
     .replace(/\brp\b\.?/gi, ' ') // buang "Rp" / "Rp."
     .replace(/[.,\-]+/g, ' ') // buang sisa titik/koma/strip (mis. ",-")
     .replace(/\s+/g, ' ')

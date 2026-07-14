@@ -28,14 +28,14 @@ export const CATEGORY_EMOJI: Record<string, string> = {
 }
 
 const KEYWORDS: Record<string, string[]> = {
-  Makan: ['makan', 'nasi', 'kopi', 'jajan', 'sarapan', 'minum', 'snack', 'gofood', 'grabfood', 'warteg', 'padang', 'bakso', 'mie', 'ayam', 'sate', 'seblak', 'cafe', 'resto'],
-  Transport: ['bensin', 'pertalite', 'pertamax', 'solar', 'parkir', 'tol', 'grab', 'gojek', 'ojek', 'ojol', 'angkot', 'busway', 'krl', 'transport', 'bus', 'tiket', 'travel', 'servis', 'oli', 'ban'],
-  Tagihan: ['listrik', 'token', 'pln', 'air', 'pdam', 'internet', 'wifi', 'indihome', 'pulsa', 'paket', 'bpjs', 'iuran', 'cicilan', 'kredit', 'angsuran', 'tagihan', 'sewa', 'kontrakan', 'kos'],
-  Belanja: ['belanja', 'sabun', 'shampoo', 'beras', 'minyak', 'gula', 'telur', 'indomaret', 'alfamart', 'supermarket', 'pasar', 'baju', 'sepatu', 'kosmetik', 'skincare'],
-  Kesehatan: ['obat', 'dokter', 'apotek', 'apotik', 'vitamin', 'rumah sakit', 'rs', 'klinik', 'periksa', 'medis'],
-  Hiburan: ['nonton', 'bioskop', 'netflix', 'spotify', 'game', 'liburan', 'wisata', 'main', 'karaoke', 'langganan'],
-  Anak: ['anak', 'susu', 'popok', 'diapers', 'pampers', 'sekolah', 'spp', 'mainan', 'les', 'buku'],
-  Tabungan: ['tabung', 'nabung', 'saving', 'investasi', 'reksadana', 'emas', 'deposito'],
+  Makan: ['makan', 'makanan', 'nasi', 'kopi', 'ngopi', 'jajan', 'jajanan', 'sarapan', 'minum', 'minuman', 'snack', 'cemilan', 'camilan', 'gofood', 'grabfood', 'shopeefood', 'warteg', 'warung', 'padang', 'bakso', 'mie', 'mi', 'ayam', 'sate', 'seblak', 'cafe', 'kafe', 'resto', 'restoran', 'nasgor', 'gorengan', 'martabak', 'soto', 'geprek', 'boba', 'teh', 'es', 'roti', 'kue', 'buah', 'sayur', 'lauk', 'catering', 'katering', 'sarabba'],
+  Transport: ['bensin', 'bbm', 'pertalite', 'pertamax', 'solar', 'dexlite', 'parkir', 'tol', 'etoll', 'grab', 'gojek', 'ojek', 'ojol', 'angkot', 'busway', 'krl', 'mrt', 'lrt', 'transport', 'transportasi', 'bus', 'tiket', 'travel', 'servis', 'service', 'oli', 'ban', 'kereta', 'pesawat', 'taksi', 'taxi', 'maxim', 'indrive', 'cuci', 'tambal'],
+  Tagihan: ['listrik', 'token', 'pln', 'air', 'pdam', 'internet', 'wifi', 'indihome', 'pulsa', 'kuota', 'paket', 'bpjs', 'iuran', 'cicilan', 'kredit', 'angsuran', 'tagihan', 'sewa', 'kontrakan', 'kos', 'kost', 'pajak', 'asuransi', 'netflix', 'spotify', 'youtube', 'langganan', 'gas', 'lpg', 'elpiji'],
+  Belanja: ['belanja', 'sabun', 'shampoo', 'sampo', 'pasta', 'odol', 'beras', 'minyak', 'gula', 'telur', 'tepung', 'indomaret', 'alfamart', 'alfamidi', 'supermarket', 'pasar', 'baju', 'celana', 'sepatu', 'sandal', 'tas', 'kosmetik', 'skincare', 'bedak', 'parfum', 'deterjen', 'tissue', 'tisu', 'peralatan', 'perabot', 'elektronik', 'hp', 'gadget'],
+  Kesehatan: ['obat', 'dokter', 'apotek', 'apotik', 'vitamin', 'rumah sakit', 'rs', 'klinik', 'periksa', 'medis', 'suntik', 'vaksin', 'lab', 'rontgen', 'gigi', 'kacamata', 'terapi', 'puskesmas'],
+  Hiburan: ['nonton', 'bioskop', 'cinema', 'game', 'games', 'liburan', 'wisata', 'wisatakuliner', 'main', 'karaoke', 'konser', 'tiket', 'rekreasi', 'jalan', 'staycation', 'hotel', 'renang', 'gym', 'olahraga'],
+  Anak: ['anak', 'susu', 'popok', 'diapers', 'pampers', 'sekolah', 'spp', 'mainan', 'les', 'buku', 'seragam', 'bayi', 'balita', 'daycare', 'tk', 'paud'],
+  Tabungan: ['tabung', 'nabung', 'tabungan', 'saving', 'savings', 'investasi', 'invest', 'reksadana', 'reksa', 'saham', 'emas', 'deposito', 'dana darurat'],
 }
 
 const ALIASES: Record<string, string> = {
@@ -53,11 +53,45 @@ const ALIASES: Record<string, string> = {
   lainnya: 'Lainnya',
 }
 
-/** Tebak kategori dari nama pengeluaran. Default 'Lainnya'. */
+// Jarak edit (Levenshtein) dengan batas — untuk toleransi typo.
+function editDistance(a: string, b: string, max = 1): number {
+  if (Math.abs(a.length - b.length) > max) return max + 1
+  const prev = Array.from({ length: b.length + 1 }, (_, i) => i)
+  for (let i = 1; i <= a.length; i++) {
+    let best = i
+    let diag = prev[0]
+    prev[0] = i
+    for (let j = 1; j <= b.length; j++) {
+      const cur = Math.min(
+        prev[j] + 1,
+        prev[j - 1] + 1,
+        diag + (a[i - 1] === b[j - 1] ? 0 : 1),
+      )
+      diag = prev[j]
+      prev[j] = cur
+      if (cur < best) best = cur
+    }
+    if (best > max) return max + 1 // early exit: baris ini sudah melebihi batas
+  }
+  return prev[b.length]
+}
+
+/**
+ * Tebak kategori dari nama pengeluaran. Coba cocok persis (substring) dulu,
+ * lalu toleransi typo (fuzzy) untuk kata kunci yang cukup panjang. Default 'Lainnya'.
+ */
 export function detectCategory(nama: string): string {
   const t = nama.toLowerCase()
   for (const [cat, kws] of Object.entries(KEYWORDS)) {
     if (kws.some((k) => t.includes(k))) return cat
+  }
+  // Fuzzy: bandingkan tiap kata (>=4 huruf) dengan kata kunci (>=5 huruf).
+  const words = t.split(/[^a-z]+/).filter((w) => w.length >= 4)
+  for (const [cat, kws] of Object.entries(KEYWORDS)) {
+    for (const k of kws) {
+      if (k.length < 5) continue
+      if (words.some((w) => editDistance(w, k, 1) <= 1)) return cat
+    }
   }
   return 'Lainnya'
 }

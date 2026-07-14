@@ -56,8 +56,11 @@ Bot balas:
 | `Belanja 100.000` | Rp 100.000 |
 | `Servis motor 1.5jt` | Rp 1.500.000 |
 | `Token listrik Rp100.000` | Rp 100.000 |
+| `Bakso dua puluh ribu` | Rp 20.000 (angka boleh berupa kata) |
+| `Kopi goceng` | Rp 5.000 (slang juga dimengerti) |
 
-Tidak perlu format khusus. Tulis apa adanya, angka di belakang.
+Tidak perlu format khusus. Tulis apa adanya. Salah ketik ringan pun tetap
+terbaca (mis. `bensn` tetap masuk Transport).
 
 ---
 
