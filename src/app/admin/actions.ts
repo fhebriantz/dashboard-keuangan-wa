@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/phone'
-import { getPaket } from '@/lib/pricing'
+import { getPackage } from '@/lib/pricing'
 import {
   verifyPassword,
   setSession,
@@ -54,15 +54,13 @@ export async function createUser(formData: FormData) {
   await guard()
   const family_id = String(formData.get('family_id') ?? '')
   const nama = String(formData.get('nama') ?? '').trim()
-  const role = String(formData.get('role') ?? '')
+  const role = String(formData.get('role') ?? '').trim() || 'anggota'
   const nomor = normalizePhone(String(formData.get('nomor_wa') ?? ''))
 
   if (!family_id) redirect('/admin?err=' + encodeURIComponent('Pilih keluarga dulu'))
   if (!nama) redirect('/admin?err=' + encodeURIComponent('Nama wajib diisi'))
   if (!nomor)
     redirect('/admin?err=' + encodeURIComponent('Nomor WA tidak valid (format 628...)'))
-  if (role !== 'suami' && role !== 'istri')
-    redirect('/admin?err=' + encodeURIComponent('Role tidak valid'))
 
   const supabase = createAdminClient()
   const { error } = await supabase
@@ -92,8 +90,9 @@ export async function approveRegistration(formData: FormData) {
   if (reg.status !== 'pending')
     redirect('/admin?err=' + encodeURIComponent('Pendaftaran sudah diproses'))
 
-  const hari = getPaket(reg.paket)?.hari ?? 30
-  const expired = new Date(Date.now() + hari * 86_400_000).toISOString()
+  const pkg = await getPackage(supabase, reg.paket)
+  const bulan = pkg?.bulan ?? 1
+  const expired = new Date(Date.now() + bulan * 30 * 86_400_000).toISOString()
 
   const { data: fam, error: famErr } = await supabase
     .from('families')
@@ -103,11 +102,22 @@ export async function approveRegistration(formData: FormData) {
   if (famErr || !fam)
     redirect('/admin?err=' + encodeURIComponent(famErr?.message ?? 'Gagal membuat keluarga'))
 
+  // Anggota dari kolom JSON baru; fallback ke kolom lama (suami/istri).
   const members: Array<Record<string, string>> = []
-  if (reg.wa_suami)
-    members.push({ family_id: fam.id, nama: reg.nama_suami || 'Suami', nomor_wa: reg.wa_suami, role: 'suami' })
-  if (reg.wa_istri)
-    members.push({ family_id: fam.id, nama: reg.nama_istri || 'Istri', nomor_wa: reg.wa_istri, role: 'istri' })
+  const list: Array<{ nama?: string; wa?: string }> = Array.isArray(reg.members)
+    ? reg.members
+    : []
+  if (list.length > 0) {
+    list.forEach((m, i) => {
+      if (m.wa)
+        members.push({ family_id: fam.id, nama: m.nama || `Anggota ${i + 1}`, nomor_wa: m.wa, role: 'anggota' })
+    })
+  } else {
+    if (reg.wa_suami)
+      members.push({ family_id: fam.id, nama: reg.nama_suami || 'Suami', nomor_wa: reg.wa_suami, role: 'suami' })
+    if (reg.wa_istri)
+      members.push({ family_id: fam.id, nama: reg.nama_istri || 'Istri', nomor_wa: reg.wa_istri, role: 'istri' })
+  }
 
   if (members.length > 0) {
     const { error: uErr } = await supabase.from('users').insert(members)
@@ -128,6 +138,58 @@ export async function approveRegistration(formData: FormData) {
 
   revalidatePath('/admin')
   redirect('/admin?ok=' + encodeURIComponent(`Pendaftaran "${reg.nama_keluarga}" disetujui & diaktifkan`))
+}
+
+export async function updatePricing(formData: FormData) {
+  await guard()
+  const harga_keluarga = Number(formData.get('harga_keluarga') ?? 0)
+  const harga_anggota = Number(formData.get('harga_anggota') ?? 0)
+  const bank = String(formData.get('bank') ?? '').trim()
+  const rekening = String(formData.get('rekening') ?? '').trim()
+  const atas_nama = String(formData.get('atas_nama') ?? '').trim()
+
+  const supabase = createAdminClient()
+  const { data: existing } = await supabase.from('pricing_config').select('id').limit(1).maybeSingle()
+  const payload = {
+    harga_keluarga: Number.isFinite(harga_keluarga) ? harga_keluarga : 0,
+    harga_anggota: Number.isFinite(harga_anggota) ? harga_anggota : 0,
+    bank,
+    rekening,
+    atas_nama,
+    updated_at: new Date().toISOString(),
+  }
+  const { error } = existing
+    ? await supabase.from('pricing_config').update(payload).eq('id', existing.id)
+    : await supabase.from('pricing_config').insert(payload)
+  if (error) redirect('/admin?err=' + encodeURIComponent(error.message))
+
+  revalidatePath('/admin')
+  redirect('/admin?ok=' + encodeURIComponent('Harga & rekening diperbarui'))
+}
+
+export async function addPackage(formData: FormData) {
+  await guard()
+  const label = String(formData.get('label') ?? '').trim()
+  const bulan = parseInt(String(formData.get('bulan') ?? ''), 10)
+  if (!label) redirect('/admin?err=' + encodeURIComponent('Label paket wajib diisi'))
+  if (!Number.isFinite(bulan) || bulan <= 0)
+    redirect('/admin?err=' + encodeURIComponent('Durasi (bulan) tidak valid'))
+
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('packages').insert({ label, bulan, urutan: bulan })
+  if (error) redirect('/admin?err=' + encodeURIComponent(error.message))
+
+  revalidatePath('/admin')
+  redirect('/admin?ok=' + encodeURIComponent(`Paket "${label}" ditambahkan`))
+}
+
+export async function deletePackage(formData: FormData) {
+  await guard()
+  const id = String(formData.get('id') ?? '')
+  const supabase = createAdminClient()
+  await supabase.from('packages').delete().eq('id', id)
+  revalidatePath('/admin')
+  redirect('/admin?ok=' + encodeURIComponent('Paket dihapus'))
 }
 
 export async function rejectRegistration(formData: FormData) {

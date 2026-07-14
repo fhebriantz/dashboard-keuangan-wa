@@ -118,6 +118,7 @@ Buka folder ini di VS Code: `code .`
    - `0003_anggaran_kategori.sql` → **anggaran per kategori (amplop)**
    - `0004_pending_kategori.sql` → bot **bertanya kategori** saat tak terdeteksi
    - `0005_registrations.sql` → **pendaftaran mandiri** calon pelanggan
+   - `0006_pricing_dan_generalisasi.sql` → **harga/paket dari admin** + peran anggota bebas
 
 ### c. Ambil kunci API
 1. Menu kiri → **Project Settings** (ikon gerigi) → **API**.
@@ -381,7 +382,13 @@ dashboard-keuangan-wa/
 3. Kirim bukti transfer via WA → kamu cek → di `/admin` klik **Setujui & Aktifkan**.
 4. Sistem otomatis membuat keluarga + mendaftarkan nomor + set masa aktif sesuai paket.
 
-> Ubah harga & rekening di `src/lib/pricing.ts`.
+**Harga & paket dikelola dari `/admin`** (bagian "Harga & Rekening"):
+- Harga dihitung dinamis: **(harga per grup + jumlah anggota × harga per anggota) × durasi**.
+  Default: Rp15.000/grup + Rp5.000/anggota per bulan.
+- Rekening pembayaran dan paket durasi (1 bulan, 3 bulan, dst) juga diedit di sini.
+
+> Produk ini **umum** — tidak terbatas suami-istri. Peran anggota bebas
+> (default `anggota`), bisa untuk pasangan, keluarga, atau tim.
 
 ---
 

@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
   if (!user || !family) {
     // Nomor tak terdaftar yang ingin mendaftar -> kirim info + link form.
     if (isRegisterIntent(inbound!.message)) {
-      return respond(registerInfoText())
+      return respond(await registerInfoText(supabase))
     }
     // Hemat kuota: selain "daftar", secara default JANGAN balas nomor tak
     // terdaftar (bisa spam/salah sambung). Terima (200) tapi diam.

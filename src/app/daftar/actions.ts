@@ -3,34 +3,40 @@
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/phone'
-import { getPaket } from '@/lib/pricing'
+import { getPackage } from '@/lib/pricing'
+
+const SLOTS = 5
 
 export async function submitRegistration(formData: FormData) {
   const nama_keluarga = String(formData.get('nama_keluarga') ?? '').trim()
-  const nama_suami = String(formData.get('nama_suami') ?? '').trim()
-  const nama_istri = String(formData.get('nama_istri') ?? '').trim()
-  const wa_suami = normalizePhone(String(formData.get('wa_suami') ?? ''))
-  const wa_istri = normalizePhone(String(formData.get('wa_istri') ?? ''))
   const paket = String(formData.get('paket') ?? '')
 
   const err = (m: string) => redirect('/daftar?err=' + encodeURIComponent(m))
 
-  if (!nama_keluarga) err('Nama keluarga wajib diisi')
-  if (!getPaket(paket)) err('Paket tidak valid')
-  // Minimal satu nomor WA valid (suami atau istri).
-  if (!wa_suami && !wa_istri)
-    err('Isi minimal satu nomor WA yang valid (format 08... atau 62...)')
+  if (!nama_keluarga) err('Nama grup/keluarga wajib diisi')
+
+  const members: Array<{ nama: string; wa: string }> = []
+  for (let i = 0; i < SLOTS; i++) {
+    const nama = String(formData.get(`m_nama_${i}`) ?? '').trim()
+    const waRaw = String(formData.get(`m_wa_${i}`) ?? '').trim()
+    if (!nama && !waRaw) continue
+    const wa = normalizePhone(waRaw)
+    if (!wa) err(`Nomor WA "${waRaw || nama}" tidak valid (format 08... atau 62...)`)
+    members.push({ nama: nama || `Anggota ${i + 1}`, wa: wa! })
+  }
+
+  if (members.length === 0) err('Isi minimal satu anggota beserta nomor WA')
 
   const supabase = createAdminClient()
-  const { error } = await supabase.from('registrations').insert({
-    nama_keluarga,
-    nama_suami: nama_suami || null,
-    wa_suami,
-    nama_istri: nama_istri || null,
-    wa_istri,
-    paket,
-  })
-  if (error) err(error.message)
+  const pkg = await getPackage(supabase, paket)
+  if (!pkg) err('Paket tidak valid')
 
-  redirect('/daftar?sukses=1&paket=' + encodeURIComponent(paket))
+  const { data, error } = await supabase
+    .from('registrations')
+    .insert({ nama_keluarga, paket, members })
+    .select('id')
+    .single()
+  if (error || !data) err(error?.message ?? 'Gagal menyimpan pendaftaran')
+
+  redirect('/daftar?sukses=' + data!.id)
 }

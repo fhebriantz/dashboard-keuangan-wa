@@ -7,9 +7,12 @@ import {
   toggleFamilyStatus,
   approveRegistration,
   rejectRegistration,
+  updatePricing,
+  addPackage,
+  deletePackage,
   logout,
 } from './actions'
-import { getPaket } from '@/lib/pricing'
+import { getPricingConfig, getPackages, hitungTotal, rupiah as rp } from '@/lib/pricing'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,9 +54,14 @@ export default async function AdminPage({
       .order('created_at', { ascending: false }),
     supabase
       .from('registrations')
-      .select('id, nama_keluarga, nama_suami, wa_suami, nama_istri, wa_istri, paket, created_at')
+      .select('id, nama_keluarga, members, paket, created_at')
       .eq('status', 'pending')
       .order('created_at', { ascending: false }),
+  ])
+
+  const [config, packages] = await Promise.all([
+    getPricingConfig(supabase),
+    getPackages(supabase, false),
   ])
 
   const fam = (families ?? []) as Family[]
@@ -61,12 +69,10 @@ export default async function AdminPage({
   const pending = (regs ?? []) as Array<{
     id: string
     nama_keluarga: string
-    nama_suami: string | null
-    wa_suami: string | null
-    nama_istri: string | null
-    wa_istri: string | null
+    members: Array<{ nama?: string; wa?: string }> | null
     paket: string
   }>
+  const pkgById = (id: string) => packages.find((p) => p.id === id)
   const famName = (id: string) =>
     fam.find((f) => f.id === id)?.nama_keluarga ?? '(?)'
 
@@ -90,16 +96,23 @@ export default async function AdminPage({
             Cek bukti transfer di WhatsApp, lalu <b>Setujui</b> untuk mengaktifkan.
           </p>
           <div style={{ display: 'grid', gap: 12 }}>
-            {pending.map((r) => (
+            {pending.map((r) => {
+              const anggota = Array.isArray(r.members) ? r.members : []
+              const pkg = pkgById(r.paket)
+              const total = hitungTotal(config, anggota.length, pkg?.bulan ?? 1)
+              return (
               <div key={r.id} style={{ ...card, background: '#fff' }}>
                 <div style={{ fontWeight: 600 }}>{r.nama_keluarga}</div>
                 <div style={{ fontSize: 14, color: '#52525b', margin: '4px 0' }}>
-                  Paket: {getPaket(r.paket)?.label ?? r.paket}
+                  Paket: {pkg?.label ?? r.paket} · {anggota.length} anggota ·{' '}
+                  <b>{rp(total)}</b>
                 </div>
                 <div style={{ fontSize: 14 }}>
-                  {r.nama_suami || 'Suami'}: {r.wa_suami ?? '—'}
-                  <br />
-                  {r.nama_istri || 'Istri'}: {r.wa_istri ?? '—'}
+                  {anggota.map((m, i) => (
+                    <div key={i}>
+                      {m.nama || `Anggota ${i + 1}`}: {m.wa ?? '—'}
+                    </div>
+                  ))}
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                   <form action={approveRegistration}>
@@ -112,10 +125,62 @@ export default async function AdminPage({
                   </form>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         </section>
       )}
+
+      {/* ---------- Kelola Harga & Paket ---------- */}
+      <section style={card}>
+        <h2 style={h2}>💳 Harga & Rekening</h2>
+        <form action={updatePricing} style={grid}>
+          <label style={lab}>
+            Harga per grup / bulan
+            <input name="harga_keluarga" type="number" defaultValue={config.harga_keluarga} style={inp} />
+          </label>
+          <label style={lab}>
+            Harga per anggota / bulan
+            <input name="harga_anggota" type="number" defaultValue={config.harga_anggota} style={inp} />
+          </label>
+          <label style={lab}>
+            Bank
+            <input name="bank" defaultValue={config.bank} style={inp} />
+          </label>
+          <label style={lab}>
+            Nomor rekening
+            <input name="rekening" defaultValue={config.rekening} style={inp} />
+          </label>
+          <label style={lab}>
+            Atas nama
+            <input name="atas_nama" defaultValue={config.atas_nama} style={inp} />
+          </label>
+          <button style={btn}>Simpan Harga</button>
+        </form>
+
+        <h3 style={{ fontSize: 15, marginTop: 20 }}>Paket Durasi</h3>
+        <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+          {packages.map((p) => (
+            <div
+              key={p.id}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14 }}
+            >
+              <span>
+                {p.label} — {p.bulan} bulan {p.aktif ? '' : '(nonaktif)'}
+              </span>
+              <form action={deletePackage}>
+                <input type="hidden" name="id" value={p.id} />
+                <button style={ghostBtn}>Hapus</button>
+              </form>
+            </div>
+          ))}
+        </div>
+        <form action={addPackage} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input name="label" placeholder="cth: 6 Bulan" style={{ ...inp, flex: 1 }} />
+          <input name="bulan" type="number" placeholder="bulan" style={{ ...inp, width: 90 }} />
+          <button style={btn}>Tambah Paket</button>
+        </form>
+      </section>
 
       {/* ---------- Tambah Keluarga ---------- */}
       <section style={card}>
@@ -172,11 +237,8 @@ export default async function AdminPage({
               <input name="nomor_wa" required placeholder="08123456789 / 628123456789" style={inp} />
             </label>
             <label style={lab}>
-              Peran
-              <select name="role" defaultValue="suami" style={inp}>
-                <option value="suami">suami</option>
-                <option value="istri">istri</option>
-              </select>
+              Peran (bebas)
+              <input name="role" defaultValue="anggota" placeholder="anggota / suami / istri / anak" style={inp} />
             </label>
             <button style={btn}>Simpan Anggota</button>
           </form>

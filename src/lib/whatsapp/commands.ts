@@ -3,7 +3,7 @@ import { wibMonthStartISO, wibDayStartISO, formatTanggalWIB } from '@/lib/time'
 import { parseTransactionMessage } from '@/lib/parse-transaction'
 import { normalizeCategory, emojiOf } from '@/lib/category'
 import { monthlyData, type CategoryRow } from '@/lib/report-data'
-import { PAKET, rupiah as rp } from '@/lib/pricing'
+import { getPricingConfig, getPackages, rupiah as rp } from '@/lib/pricing'
 
 /** Apakah pesan dari nomor tak terdaftar bermaksud mendaftar? */
 export function isRegisterIntent(message: string): boolean {
@@ -13,15 +13,22 @@ export function isRegisterIntent(message: string): boolean {
 }
 
 /** Info onboarding untuk calon pelanggan (harga + link form). */
-export function registerInfoText(): string {
-  const daftar = PAKET.map((p) => `• ${p.label} — ${rp(p.harga)}`).join('\n')
+export async function registerInfoText(supabase: SupabaseClient): Promise<string> {
+  const [cfg, pkgs] = await Promise.all([
+    getPricingConfig(supabase),
+    getPackages(supabase),
+  ])
   const base = process.env.APP_URL?.replace(/\/$/, '')
+  const paketList = pkgs.length
+    ? pkgs.map((p) => `• ${p.label}`).join('\n')
+    : '• (hubungi admin)'
   let msg =
     '🙌 Mau berlangganan *Dashboard Keuangan WA*?\n\n' +
-    'Catat keuangan keluarga cukup lewat chat WhatsApp.\n\n' +
-    `*Paket:*\n${daftar}\n\n`
+    'Catat keuangan bersama pasangan, keluarga, atau tim — cukup lewat chat.\n\n' +
+    `*Harga:* ${rp(cfg.harga_keluarga)}/grup + ${rp(cfg.harga_anggota)}/anggota per bulan\n\n` +
+    `*Paket durasi:*\n${paketList}\n\n`
   msg += base
-    ? `Daftar di sini (isi 1 menit):\n${base}/daftar\n\nSetelah daftar, kamu akan dapat info pembayaran.`
+    ? `Daftar di sini (isi 1 menit):\n${base}/daftar`
     : 'Balas pesan ini untuk info pendaftaran.'
   return msg
 }
