@@ -16,6 +16,8 @@ const FITUR = [
   { icon: '✉️', title: 'Sistem amplop', desc: 'Bagi jatah per kategori (Makan, Transport, dll) dan pantau sisanya real-time.' },
   { icon: '📊', title: 'Laporan & grafik', desc: 'Tren harian, komposisi pengeluaran, dan kondisi amplop dalam grafik rapi.' },
   { icon: '🧮', title: 'Pemasukan & saldo', desc: 'Catat gaji/pemasukan, lihat saldo riil dan sisa anggaran kapan saja.' },
+  { icon: '📷', title: 'Scan struk', desc: 'Kirim foto struk belanja — total & kategori otomatis terbaca dan tercatat.' },
+  { icon: '🗣️', title: 'Ngerti bahasa santai', desc: 'Ketik apa adanya, bahkan kalimat panjang — bot tetap paham maksudmu.' },
   { icon: '👨‍👩‍👧', title: 'Bareng pasangan/tim', desc: 'Suami, istri, atau anggota lain mencatat dari HP masing-masing ke satu akun.' },
 ]
 
@@ -76,6 +78,8 @@ export default async function LandingPage() {
           <Bubble side="left" text={'✅ Tercatat\n🚗 Transport · Rp 50.000\n📊 Sisa amplop Transport: Rp 450.000'} />
           <Bubble side="right" text="masuk gaji 10jt" />
           <Bubble side="left" text={'✅ Pemasukan tercatat\n💵 Rp 10.000.000'} />
+          <Bubble side="right" text="📷 [foto struk]" />
+          <Bubble side="left" text={'✅ Struk terbaca\n🛒 Indomaret · Rp 87.500'} />
           <Bubble side="right" text="laporan" />
           <Bubble side="left" text={'📋 Rekap bulan ini + 🔗 link laporan web'} />
         </div>
