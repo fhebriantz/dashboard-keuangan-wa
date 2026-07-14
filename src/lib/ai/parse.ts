@@ -37,6 +37,15 @@ function modelChain(): string[] {
   return [...new Set(chain)] // buang duplikat, jaga urutan
 }
 
+// Banyak API key (akun Google berbeda) — dipisah koma di GEMINI_API_KEYS.
+// Kalau satu key kena limit harian, otomatis dicoba key berikutnya.
+function apiKeys(): string[] {
+  const multi = process.env.GEMINI_API_KEYS
+  if (multi) return multi.split(',').map((s) => s.trim()).filter(Boolean)
+  const single = process.env.GEMINI_API_KEY?.trim()
+  return single ? [single] : []
+}
+
 function toEntry(text: string): ParsedEntry | null {
   let parsed: unknown
   try {
@@ -83,9 +92,10 @@ async function callModel(
         }),
       },
     )
-    // Limit / sibuk / server error / model tak tersedia -> coba model lain.
-    if ([429, 500, 502, 503, 404].includes(res.status)) return { retry: true, entry: null }
-    if (!res.ok) return { retry: false, entry: null } // mis. 400/401 -> tak usah coba model lain
+    // Limit/sibuk/server/model-tak-ada, atau key bermasalah (401/403) ->
+    // coba kombinasi (model/key) berikutnya.
+    if ([429, 500, 502, 503, 404, 401, 403].includes(res.status)) return { retry: true, entry: null }
+    if (!res.ok) return { retry: false, entry: null } // mis. 400 (permintaan salah) -> berhenti
 
     const data = await res.json()
     const text: string | undefined = data?.candidates?.[0]?.content?.parts?.[0]?.text
@@ -101,14 +111,18 @@ async function callModel(
 
 export async function aiParseEntry(message: string): Promise<ParsedEntry | null> {
   if (process.env.AI_PROVIDER !== 'gemini') return null
-  const key = process.env.GEMINI_API_KEY
-  if (!key) return null
+  const keys = apiKeys()
+  if (keys.length === 0) return null
+  const models = modelChain()
 
-  for (const model of modelChain()) {
-    const { retry, entry } = await callModel(model, key, message)
-    if (entry) return entry // berhasil
-    if (!retry) return null // model menjawab tapi tak bisa parse -> rule-based
-    // limit/sibuk/timeout -> lanjut ke model berikutnya
+  // Coba tiap key × tiap model. Limit/error -> lanjut kombinasi berikutnya.
+  for (const key of keys) {
+    for (const model of models) {
+      const { retry, entry } = await callModel(model, key, message)
+      if (entry) return entry // berhasil
+      if (!retry) return null // model menjawab tapi tak bisa parse -> rule-based
+      // limit/sibuk/key bermasalah -> lanjut model/key berikutnya
+    }
   }
-  return null // semua model gagal -> rule-based
+  return null // semua kombinasi gagal -> rule-based
 }
