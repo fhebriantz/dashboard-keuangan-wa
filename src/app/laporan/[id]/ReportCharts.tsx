@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Chart from 'chart.js/auto'
 import { colorOf } from '@/lib/category'
 import type { ChartData } from '@/lib/report-data'
@@ -9,65 +9,66 @@ const rp = (n: number) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.rou
 const rpShort = (n: number) =>
   n >= 1e6 ? (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'jt' : n >= 1e3 ? Math.round(n / 1e3) + 'rb' : String(n)
 
-const INK = { grid: 'rgba(100,116,139,.14)', tick: '#64748b' }
-const tooltip = {
-  backgroundColor: '#ffffff',
-  titleColor: '#0f172a',
-  bodyColor: '#0f172a',
-  borderColor: 'rgba(100,116,139,.2)',
+const ink = (dark: boolean) =>
+  dark
+    ? { grid: 'rgba(148,163,184,.16)', tick: '#94a3b8' }
+    : { grid: 'rgba(100,116,139,.14)', tick: '#64748b' }
+
+const tooltipOpts = (dark: boolean) => ({
+  backgroundColor: dark ? '#0f172a' : '#ffffff',
+  titleColor: dark ? '#e2e8f0' : '#0f172a',
+  bodyColor: dark ? '#e2e8f0' : '#0f172a',
+  borderColor: dark ? 'rgba(148,163,184,.3)' : 'rgba(100,116,139,.2)',
   borderWidth: 1,
   padding: 10,
   cornerRadius: 8,
   boxPadding: 4,
-}
+})
 
 export default function ReportCharts({ chart }: { chart: ChartData }) {
   const donutRef = useRef<HTMLCanvasElement>(null)
   const lineRef = useRef<HTMLCanvasElement>(null)
   const areaRef = useRef<HTMLCanvasElement>(null)
+  const [dark, setDark] = useState(false)
+
+  // Ikuti tema (data-theme + prefers-color-scheme).
+  useEffect(() => {
+    const read = () => {
+      const t = document.documentElement.dataset.theme
+      setDark(t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches))
+    }
+    read()
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    mq.addEventListener('change', read)
+    const obs = new MutationObserver(read)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => {
+      mq.removeEventListener('change', read)
+      obs.disconnect()
+    }
+  }, [])
 
   useEffect(() => {
     const charts: Chart[] = []
     const { labels, pengeluaranHarian, sisaHarian, areaSeries, donut } = chart
+    const IK = ink(dark)
+    const tip = tooltipOpts(dark)
+    const donutBorder = dark ? '#0f172a' : '#ffffff'
 
-    // ---- Donut: komposisi ----
+    const axes = (stacked = false) => ({
+      x: { grid: { display: false }, ticks: { color: IK.tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, border: { display: false } },
+      y: { stacked, grid: { color: IK.grid }, ticks: { color: IK.tick, callback: (v: unknown) => rpShort(Number(v)) }, border: { display: false }, beginAtZero: true },
+    })
+
     if (donutRef.current && donut.length) {
       const total = donut.reduce((s, d) => s + d.total, 0)
-      charts.push(
-        new Chart(donutRef.current, {
-          type: 'doughnut',
-          data: {
-            labels: donut.map((d) => d.kategori),
-            datasets: [
-              {
-                data: donut.map((d) => d.total),
-                backgroundColor: donut.map((d) => colorOf(d.kategori)),
-                borderColor: '#ffffff',
-                borderWidth: 2,
-                hoverOffset: 6,
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '66%',
-            plugins: {
-              legend: { display: false },
-              tooltip: {
-                ...tooltip,
-                callbacks: {
-                  label: (c) =>
-                    ' ' + c.label + ': ' + rp(c.parsed) + ' (' + Math.round((c.parsed / total) * 100) + '%)',
-                },
-              },
-            },
-          },
-        }),
-      )
+      charts.push(new Chart(donutRef.current, {
+        type: 'doughnut',
+        data: { labels: donut.map((d) => d.kategori), datasets: [{ data: donut.map((d) => d.total), backgroundColor: donut.map((d) => colorOf(d.kategori)), borderColor: donutBorder, borderWidth: 2, hoverOffset: 6 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '66%', plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: (c) => ' ' + c.label + ': ' + rp(c.parsed) + ' (' + Math.round((c.parsed / total) * 100) + '%)' } } } },
+      }))
     }
 
-    // ---- Line: tren harian ----
     if (lineRef.current) {
       const grad = (hex: string) => (c: { chart: Chart }) => {
         const { ctx, chartArea } = c.chart
@@ -77,64 +78,26 @@ export default function ReportCharts({ chart }: { chart: ChartData }) {
         g.addColorStop(1, hex + '00')
         return g
       }
-      charts.push(
-        new Chart(lineRef.current, {
-          type: 'line',
-          data: {
-            labels,
-            datasets: [
-              { label: 'Pengeluaran', data: pengeluaranHarian, borderColor: '#e34948', borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.35, fill: true, backgroundColor: grad('#e34948') },
-              { label: 'Sisa Saldo', data: sisaHarian, borderColor: '#2a78d6', borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.35, fill: false },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { display: false }, tooltip: { ...tooltip, callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + rp(Number(c.parsed.y ?? 0)) } } },
-            scales: {
-              x: { grid: { display: false }, ticks: { color: INK.tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, border: { display: false } },
-              y: { grid: { color: INK.grid }, ticks: { color: INK.tick, callback: (v) => rpShort(Number(v)) }, border: { display: false }, beginAtZero: true },
-            },
-          },
-        }),
-      )
+      charts.push(new Chart(lineRef.current, {
+        type: 'line',
+        data: { labels, datasets: [
+          { label: 'Pengeluaran', data: pengeluaranHarian, borderColor: '#e34948', borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.35, fill: true, backgroundColor: grad('#e34948') },
+          { label: 'Sisa Saldo', data: sisaHarian, borderColor: '#2a78d6', borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0.35, fill: false },
+        ] },
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + rp(Number(c.parsed.y ?? 0)) } } }, scales: axes(false) },
+      }))
     }
 
-    // ---- Stacked area: kondisi amplop ----
     if (areaRef.current && areaSeries.length) {
-      charts.push(
-        new Chart(areaRef.current, {
-          type: 'line',
-          data: {
-            labels,
-            datasets: areaSeries.map((s) => ({
-              label: s.kategori,
-              data: s.data,
-              borderColor: colorOf(s.kategori),
-              backgroundColor: colorOf(s.kategori) + '66',
-              borderWidth: 1.5,
-              pointRadius: 0,
-              tension: 0.3,
-              fill: true,
-            })),
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { display: false }, tooltip: { ...tooltip, callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + rp(Number(c.parsed.y ?? 0)) } } },
-            scales: {
-              x: { grid: { display: false }, ticks: { color: INK.tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, border: { display: false } },
-              y: { stacked: true, grid: { color: INK.grid }, ticks: { color: INK.tick, callback: (v) => rpShort(Number(v)) }, border: { display: false }, beginAtZero: true },
-            },
-          },
-        }),
-      )
+      charts.push(new Chart(areaRef.current, {
+        type: 'line',
+        data: { labels, datasets: areaSeries.map((s) => ({ label: s.kategori, data: s.data, borderColor: colorOf(s.kategori), backgroundColor: colorOf(s.kategori) + '66', borderWidth: 1.5, pointRadius: 0, tension: 0.3, fill: true })) },
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { ...tip, callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + rp(Number(c.parsed.y ?? 0)) } } }, scales: axes(true) },
+      }))
     }
 
     return () => charts.forEach((c) => c.destroy())
-  }, [chart])
+  }, [chart, dark])
 
   const hasDaily = chart.pengeluaranHarian.some((v) => v > 0) || chart.sisaHarian.some((v) => v !== 0)
 
@@ -144,9 +107,7 @@ export default function ReportCharts({ chart }: { chart: ChartData }) {
         <section style={card}>
           <h2 style={h2}>Komposisi Pengeluaran</h2>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 20, marginTop: 8 }}>
-            <div style={{ height: 200, width: 200 }}>
-              <canvas ref={donutRef} />
-            </div>
+            <div style={{ height: 200, width: 200 }}><canvas ref={donutRef} /></div>
             <div style={{ display: 'grid', gap: 6, minWidth: 200, flex: 1 }}>
               {chart.donut.map((d) => (
                 <div key={d.kategori} style={legendRow}>
@@ -171,9 +132,7 @@ export default function ReportCharts({ chart }: { chart: ChartData }) {
               <Legend color="#2a78d6" label="Sisa Saldo" />
             </div>
           </div>
-          <div style={{ height: 280, marginTop: 12 }}>
-            <canvas ref={lineRef} />
-          </div>
+          <div style={{ height: 280, marginTop: 12 }}><canvas ref={lineRef} /></div>
         </section>
       )}
 
@@ -187,9 +146,7 @@ export default function ReportCharts({ chart }: { chart: ChartData }) {
               ))}
             </div>
           </div>
-          <div style={{ height: 280, marginTop: 12 }}>
-            <canvas ref={areaRef} />
-          </div>
+          <div style={{ height: 280, marginTop: 12 }}><canvas ref={areaRef} /></div>
         </section>
       )}
     </div>
@@ -206,25 +163,11 @@ function Legend({ color, label }: { color: string; label: string }) {
 }
 
 const card: React.CSSProperties = {
-  border: '1px solid #e4e4e7',
+  border: '1px solid var(--border)',
   borderRadius: 12,
   padding: 18,
-  background: '#fff',
+  background: 'var(--surface)',
 }
-const h2: React.CSSProperties = { fontSize: 15, margin: 0, fontWeight: 700 }
-const legendHead: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 10,
-}
-const legendRow: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  fontSize: 14,
-  background: '#f8fafc',
-  borderRadius: 8,
-  padding: '8px 12px',
-}
+const h2: React.CSSProperties = { fontSize: 15, margin: 0, fontWeight: 700, color: 'var(--text)' }
+const legendHead: React.CSSProperties = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }
+const legendRow: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14, background: 'var(--track)', borderRadius: 8, padding: '8px 12px' }

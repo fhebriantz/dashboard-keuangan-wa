@@ -123,6 +123,7 @@ Buka folder ini di VS Code: `code .`
    - `0005_registrations.sql` → **pendaftaran mandiri** calon pelanggan
    - `0006_pricing_dan_generalisasi.sql` → **harga/paket dari admin** + peran anggota bebas
    - `0007_hapus_anggaran_bulanan.sql` → hapus plafon total (cukup amplop + saldo)
+   - `0008_budget_logs.sql` → riwayat perubahan amplop (perintah `pindah`)
 
 ### c. Ambil kunci API
 1. Menu kiri → **Project Settings** (ikon gerigi) → **API**.

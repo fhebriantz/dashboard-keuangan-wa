@@ -157,11 +157,19 @@ Sisa amplop & "Total amplop" langsung menyesuaikan.
 > belum dialokasikan) otomatis menutup kenaikan itu.
 
 ### Memindahkan jatah antar amplop
-Mau geser jatah dari satu pos ke pos lain? Lakukan dua perintah:
+Mau geser jatah dari satu pos ke pos lain? Cukup **satu perintah**:
 ```
-anggaran makan 1500000        → turunkan Makan (dari 2jt) −500rb
-anggaran transport 1200000    → naikkan Transport +500rb
+pindah makan transport 500000
 ```
+Artinya: kurangi amplop **Makan** Rp 500.000, tambahkan ke **Transport**. Bot balas:
+```
+✅ Pindah Rp 500.000 dari Makan ke Transport.
+Makan: Rp 1.500.000 · Transport: Rp 1.200.000
+```
+> Kata lain: `geser makan transport 500rb` atau `transfer makan transport 500rb`.
+
+Semua perubahan amplop (set/tambah/pindah) tercatat di bagian **"Riwayat Amplop"**
+pada laporan web.
 
 ---
 
@@ -269,7 +277,8 @@ masuk gaji 10000000     → pemasukan
 
 **Amplop:**
 ```
-anggaran makan 2jt      → set jatah kategori Makan
+anggaran makan 2jt              → set/ubah jatah kategori Makan
+pindah makan transport 500rb    → geser jatah antar kategori
 ```
 
 **Lihat & kelola:**

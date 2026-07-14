@@ -8,6 +8,7 @@ import {
   detectCommand,
   handleCommand,
   detectSetBudget,
+  detectMoveBudget,
   isRegisterIntent,
   registerInfoText,
 } from '@/lib/whatsapp/commands'
@@ -156,6 +157,12 @@ export async function POST(req: NextRequest) {
   // Set anggaran amplop per kategori: "anggaran makan 2jt"
   const budgetCmd = detectSetBudget(inbound!.message)
   if (budgetCmd) {
+    const { data: prev } = await supabase
+      .from('category_budgets')
+      .select('nominal')
+      .eq('family_id', family.id)
+      .eq('kategori', budgetCmd.kategori)
+      .maybeSingle()
     const { error } = await supabase.from('category_budgets').upsert(
       { family_id: family.id, kategori: budgetCmd.kategori, nominal: budgetCmd.nominal },
       { onConflict: 'family_id,kategori' },
@@ -164,8 +171,51 @@ export async function POST(req: NextRequest) {
       console.error('[webhook] set budget error:', error.message)
       return respond('Gagal menyimpan anggaran. Coba lagi sebentar.')
     }
+    await supabase.from('budget_logs').insert({
+      family_id: family.id,
+      kategori: budgetCmd.kategori,
+      aksi: 'set',
+      nominal_lama: prev ? Number(prev.nominal) : null,
+      nominal_baru: budgetCmd.nominal,
+    })
     return respond(
       `✅ Anggaran *${budgetCmd.kategori}* diset ${rupiah(budgetCmd.nominal)}/bulan.`,
+    )
+  }
+
+  // Pindah jatah antar amplop: "pindah makan transport 500rb"
+  const moveCmd = detectMoveBudget(inbound!.message)
+  if (moveCmd) {
+    const { data: buds } = await supabase
+      .from('category_budgets')
+      .select('kategori, nominal')
+      .eq('family_id', family.id)
+      .in('kategori', [moveCmd.dari, moveCmd.ke])
+    const cur: Record<string, number> = {}
+    ;(buds ?? []).forEach((b) => (cur[b.kategori] = Number(b.nominal)))
+    const dariLama = cur[moveCmd.dari] ?? 0
+    const keLama = cur[moveCmd.ke] ?? 0
+    const dariBaru = Math.max(0, dariLama - moveCmd.nominal)
+    const keBaru = keLama + moveCmd.nominal
+
+    const { error } = await supabase.from('category_budgets').upsert(
+      [
+        { family_id: family.id, kategori: moveCmd.dari, nominal: dariBaru },
+        { family_id: family.id, kategori: moveCmd.ke, nominal: keBaru },
+      ],
+      { onConflict: 'family_id,kategori' },
+    )
+    if (error) {
+      console.error('[webhook] move budget error:', error.message)
+      return respond('Gagal memindahkan jatah. Coba lagi sebentar.')
+    }
+    await supabase.from('budget_logs').insert([
+      { family_id: family.id, kategori: moveCmd.dari, aksi: 'pindah_keluar', nominal_lama: dariLama, nominal_baru: dariBaru },
+      { family_id: family.id, kategori: moveCmd.ke, aksi: 'pindah_masuk', nominal_lama: keLama, nominal_baru: keBaru },
+    ])
+    return respond(
+      `✅ Pindah ${rupiah(moveCmd.nominal)} dari *${moveCmd.dari}* ke *${moveCmd.ke}*.\n` +
+        `${moveCmd.dari}: ${rupiah(dariBaru)} · ${moveCmd.ke}: ${rupiah(keBaru)}`,
     )
   }
 

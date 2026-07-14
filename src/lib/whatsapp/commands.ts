@@ -50,6 +50,24 @@ export function detectSetBudget(
 }
 
 /**
+ * Deteksi perintah pindah jatah antar amplop:
+ *   "pindah makan transport 500rb" / "geser makan transport 500rb"
+ */
+export function detectMoveBudget(
+  message: string,
+): { dari: string; ke: string; nominal: number } | null {
+  const m = (message ?? '').trim().match(/^(pindah|geser|transfer)\b\s+(.*)$/i)
+  if (!m) return null
+  const parts = m[2].trim().split(/\s+/)
+  if (parts.length < 3) return null
+  const dari = normalizeCategory(parts[0])
+  const ke = normalizeCategory(parts[1])
+  const parsed = parseTransactionMessage('x ' + parts.slice(2).join(' '))
+  if (!parsed || dari === ke) return null
+  return { dari, ke, nominal: parsed.nominal }
+}
+
+/**
  * Perintah bot. Sengaja menerima DUA gaya:
  *   - dengan slash: /help, /total
  *   - tanpa slash : help, total, bantuan
