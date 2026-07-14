@@ -110,6 +110,14 @@ beli obat 50rb #kesehatan
 kado ultah 100rb #hiburan
 ```
 
+**Kategori tidak ada di daftar?** Saat bot bertanya, balas saja **nama kategori
+buatanmu** — mis. `olahraga` atau `donasi`. Bot menerimanya sebagai kategori baru
+(bisa diberi amplop juga: `anggaran olahraga 200rb`).
+
+**Bot belajar otomatis** 🧠 — sekali kamu kategorikan sebuah nama (mis. "kado" →
+Belanja), lain kali pengeluaran dengan nama serupa **langsung** masuk kategori itu
+tanpa ditanya lagi.
+
 ---
 
 ## 5. Amplop — jatah per kategori

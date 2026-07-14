@@ -12,7 +12,8 @@ import {
   isRegisterIntent,
   registerInfoText,
 } from '@/lib/whatsapp/commands'
-import { emojiOf, matchCategory } from '@/lib/category'
+import { emojiOf, asCategory } from '@/lib/category'
+import { lookupCategoryMemory, learnCategoryMemory } from '@/lib/category-memory'
 import { wibMonthStartISO } from '@/lib/time'
 
 // service_role + supabase-js butuh runtime Node (bukan Edge murni).
@@ -122,23 +123,39 @@ export async function POST(req: NextRequest) {
   // 4b) Menunggu jawaban kategori dari pertanyaan sebelumnya?
   // -----------------------------------------------------------
   if (user.pending_tx_id) {
-    const answered = matchCategory(inbound!.message)
+    const msg = inbound!.message
     const fresh =
       user.pending_at &&
       Date.now() - new Date(user.pending_at).getTime() < 60 * 60 * 1000
-    if (answered && fresh) {
-      await supabase
-        .from('transactions')
-        .update({ kategori: answered })
-        .eq('id', user.pending_tx_id)
-        .eq('family_id', family.id)
-      await supabase
-        .from('users')
-        .update({ pending_tx_id: null, pending_at: null })
-        .eq('id', user.id)
-      return respond(`✅ Dikategorikan sebagai ${emojiOf(answered)} ${answered}.`)
+    // Kalau pesan ini sebenarnya aksi baru (perintah / transaksi), jangan
+    // anggap sebagai jawaban kategori — batalkan pending, proses seperti biasa.
+    const aksiBaru =
+      !!detectCommand(msg) || !!detectSetBudget(msg) || !!detectMoveBudget(msg) || !!parseEntry(msg)
+
+    if (fresh && !aksiBaru) {
+      const cat = asCategory(msg)
+      if (cat) {
+        const { data: tx } = await supabase
+          .from('transactions')
+          .update({ kategori: cat })
+          .eq('id', user.pending_tx_id)
+          .eq('family_id', family.id)
+          .select('nama_pengeluaran')
+          .maybeSingle()
+        await supabase
+          .from('users')
+          .update({ pending_tx_id: null, pending_at: null })
+          .eq('id', user.id)
+        if (tx?.nama_pengeluaran)
+          await learnCategoryMemory(supabase, family.id, tx.nama_pengeluaran, cat)
+        return respond(`✅ Dikategorikan sebagai ${emojiOf(cat)} ${cat}.`)
+      }
+      // Belum dikenal sebagai kategori & bukan aksi baru -> tanya ulang.
+      return respond(
+        '❓ Kategori belum dikenal. Balas nama kategori, mis. *Makan*, *Transport*, atau *Olahraga*.\n(abaikan jika mau tetap di Lainnya)',
+      )
     }
-    // Bukan jawaban kategori / kadaluarsa -> bersihkan, lanjut proses biasa.
+    // Aksi baru atau kadaluarsa -> bersihkan pending, lanjut proses biasa.
     await supabase
       .from('users')
       .update({ pending_tx_id: null, pending_at: null })
@@ -234,10 +251,17 @@ export async function POST(req: NextRequest) {
   }
 
   // -----------------------------------------------------------
-  // 7) Simpan transaksi. family_id & user_id DIKUNCI dari hasil
-  //    lookup server-side — tidak pernah dari input client.
-  //    Inilah inti isolasi multi-tenant di jalur tulis.
+  // 7) Tentukan kategori: pemasukan -> null; pengeluaran -> override/auto,
+  //    lalu jika masih 'Lainnya' coba INGATAN (auto-belajar) sebelum bertanya.
   // -----------------------------------------------------------
+  let kategori: string | null =
+    entry.tipe === 'pemasukan' ? null : entry.kategori ?? 'Lainnya'
+  if (entry.tipe === 'pengeluaran' && kategori === 'Lainnya' && !entry.kategoriManual) {
+    const remembered = await lookupCategoryMemory(supabase, family.id, entry.nama)
+    if (remembered) kategori = remembered
+  }
+
+  // Simpan transaksi. family_id & user_id DIKUNCI dari hasil lookup server-side.
   const { data: inserted, error: insErr } = await supabase
     .from('transactions')
     .insert({
@@ -246,7 +270,7 @@ export async function POST(req: NextRequest) {
       nama_pengeluaran: entry.nama,
       nominal: entry.nominal,
       tipe: entry.tipe,
-      kategori: entry.kategori,
+      kategori,
     })
     .select('id')
     .single()
@@ -254,6 +278,11 @@ export async function POST(req: NextRequest) {
   if (insErr) {
     console.error('[webhook] insert error:', insErr.message)
     return respond('Gagal menyimpan catatan. Coba lagi beberapa saat.')
+  }
+
+  // Belajar dari override manual (#kategori) untuk pemakaian berikutnya.
+  if (entry.tipe === 'pengeluaran' && entry.kategoriManual && entry.kategori) {
+    await learnCategoryMemory(supabase, family.id, entry.nama, entry.kategori)
   }
 
   // -----------------------------------------------------------
@@ -266,15 +295,15 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const kategori = entry.kategori ?? 'Lainnya'
+  const kat = kategori ?? 'Lainnya'
   const lines = [
     `✅ Tercatat untuk Keluarga *${family.nama_keluarga}*`,
     `📝 ${entry.nama}`,
-    `${emojiOf(kategori)} ${kategori} · ${rupiah(entry.nominal)}`,
+    `${emojiOf(kat)} ${kat} · ${rupiah(entry.nominal)}`,
   ]
 
   // Kategori tak terdeteksi (auto 'Lainnya', bukan override) -> tanya balik.
-  if (kategori === 'Lainnya' && !entry.kategoriManual && inserted) {
+  if (kat === 'Lainnya' && !entry.kategoriManual && inserted) {
     await supabase
       .from('users')
       .update({ pending_tx_id: inserted.id, pending_at: new Date().toISOString() })
@@ -297,13 +326,13 @@ export async function POST(req: NextRequest) {
       .from('category_budgets')
       .select('nominal')
       .eq('family_id', family.id)
-      .eq('kategori', kategori)
+      .eq('kategori', kat)
       .maybeSingle(),
     supabase
       .from('transactions')
       .select('nominal')
       .eq('family_id', family.id)
-      .eq('kategori', kategori)
+      .eq('kategori', kat)
       .eq('tipe', 'pengeluaran')
       .gte('created_at', monthStart),
   ])
@@ -313,8 +342,8 @@ export async function POST(req: NextRequest) {
     const sisa = Number(budgetRow.nominal) - spent
     lines.push(
       sisa >= 0
-        ? `📊 Sisa amplop ${kategori}: ${rupiah(sisa)}`
-        : `⚠️ Amplop ${kategori} lewat ${rupiah(-sisa)}`,
+        ? `📊 Sisa amplop ${kat}: ${rupiah(sisa)}`
+        : `⚠️ Amplop ${kat} lewat ${rupiah(-sisa)}`,
     )
   }
 

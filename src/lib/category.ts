@@ -93,6 +93,32 @@ export function colorOf(kategori: string): string {
   return CATEGORY_COLOR[kategori] ?? '#94a3b8'
 }
 
+// Kata "isian" yang bukan kategori (agar balasan seperti "ok"/"gak tau" tak
+// disalahartikan sebagai nama kategori).
+const FILLERS = new Set([
+  'ok', 'oke', 'okay', 'ya', 'iya', 'yaudah', 'yodah', 'tidak', 'gak', 'ga', 'engga',
+  'enggak', 'ndak', 'nggak', 'makasih', 'terimakasih', 'thanks', 'sip', 'mantap',
+  'bingung', 'tau', 'gatau', 'skip', 'lewat', 'batal', 'ntar', 'nanti', 'apa', 'hah', 'gak tau', 'ga tau', 'terima kasih',
+])
+
+/**
+ * Ubah balasan pengguna menjadi kategori — untuk menjawab pertanyaan
+ * "masuk kategori apa?". Menerima kategori BAKU (lewat matchCategory) maupun
+ * kategori CUSTOM (mis. "Olahraga"), tapi menolak angka & kata filler.
+ * Return kategori kanonik/Title-case, atau null kalau bukan kategori.
+ */
+export function asCategory(input: string): string | null {
+  const t = (input ?? '').trim().toLowerCase()
+  if (!t || /\d/.test(t) || FILLERS.has(t)) return null
+  const known = matchCategory(input)
+  if (known) return known
+  // Custom: 2-20 huruf/spasi, maksimal 2 kata.
+  if (/^[a-zA-Z][a-zA-Z ]{1,19}$/.test(t) && t.split(/\s+/).length <= 2) {
+    return normalizeCategory(input)
+  }
+  return null
+}
+
 /**
  * Cocokkan sebuah balasan pelanggan ke kategori yang dikenal (tanpa angka).
  * Dipakai saat bot bertanya "masuk kategori apa?" lalu user membalas 1 kata.
