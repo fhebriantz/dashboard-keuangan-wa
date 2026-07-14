@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Laporan Keuangan — Demo</title>
+<script>
+  // Set tema sebelum render agar tak ada kedip.
+  (function () {
+    try {
+      var t = localStorage.getItem('theme');
+      if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches))
+        document.documentElement.classList.add('dark');
+    } catch (e) {}
+  })();
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] } } } };
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  html { font-family: 'Inter', system-ui, sans-serif; }
+  .card { transition: background-color .3s, border-color .3s; }
+  canvas { max-width: 100%; }
+</style>
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased transition-colors">
+  <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+
+    <!-- Header -->
+    <header class="mb-6 flex items-start justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-extrabold tracking-tight sm:text-3xl">Laporan Keuangan</h1>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Keluarga Budi · Juli 2026</p>
+      </div>
+      <button id="themeToggle" aria-label="Ganti tema"
+        class="card grid h-11 w-11 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800">
+        <svg class="hidden h-5 w-5 dark:block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36 6.36-1.42-1.42M6.34 6.34 4.93 4.93m12.73 0-1.41 1.41M6.34 17.66l-1.41 1.41M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z"/></svg>
+        <svg class="h-5 w-5 dark:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+      </button>
+    </header>
+
+    <!-- Summary cards -->
+    <section class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <!-- Pemasukan -->
+      <div class="card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex items-center justify-between">
+          <span class="grid h-11 w-11 place-items-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5m0 0-6 6m6-6 6 6"/></svg>
+          </span>
+          <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">Masuk</span>
+        </div>
+        <p class="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">Total Pemasukan</p>
+        <p id="sumIn" class="mt-1 text-2xl font-extrabold tracking-tight">Rp 0</p>
+      </div>
+      <!-- Pengeluaran -->
+      <div class="card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex items-center justify-between">
+          <span class="grid h-11 w-11 place-items-center rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14m0 0 6-6m-6 6-6-6"/></svg>
+          </span>
+          <span class="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-600 dark:bg-rose-500/15 dark:text-rose-400">Keluar</span>
+        </div>
+        <p class="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">Total Pengeluaran</p>
+        <p id="sumOut" class="mt-1 text-2xl font-extrabold tracking-tight">Rp 0</p>
+      </div>
+      <!-- Saldo -->
+      <div class="card rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex items-center justify-between">
+          <span class="grid h-11 w-11 place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.9"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18v10H3zM16 12h.01M3 10h18"/></svg>
+          </span>
+          <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-400">Sisa</span>
+        </div>
+        <p class="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400">Sisa Saldo</p>
+        <p id="sumBal" class="mt-1 text-2xl font-extrabold tracking-tight">Rp 0</p>
+      </div>
+    </section>
+
+    <!-- Line chart -->
+    <section class="card mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold">Tren Harian</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Pengeluaran vs sisa saldo tiap tanggal</p>
+        </div>
+        <div class="flex items-center gap-4 text-xs font-medium">
+          <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#e34948"></span>Pengeluaran</span>
+          <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#2a78d6"></span>Sisa Saldo</span>
+        </div>
+      </div>
+      <div class="mt-4" style="height:300px"><canvas id="lineChart"></canvas></div>
+    </section>
+
+    <!-- Stacked area chart -->
+    <section class="card mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold">Kondisi Amplop</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">Volume pemakaian per kategori sepanjang bulan</p>
+        </div>
+        <div class="flex items-center gap-4 text-xs font-medium">
+          <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#1baf7a"></span>Makan</span>
+          <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#eb6834"></span>Transport</span>
+          <span class="flex items-center gap-1.5"><span class="h-2.5 w-2.5 rounded-full" style="background:#4a3aa7"></span>Non-Amplop</span>
+        </div>
+      </div>
+      <div class="mt-4" style="height:300px"><canvas id="areaChart"></canvas></div>
+    </section>
+
+    <p class="mt-6 text-center text-xs text-slate-400 dark:text-slate-600">Dashboard Keuangan WA · data contoh 30 hari</p>
+  </div>
+
+<script>
+  // ---------- Dummy data 30 hari (seeded, stabil) ----------
+  function makeRng(seed) { let s = seed >>> 0; return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+  const rng = makeRng(20260714);
+  const DAYS = 30;
+  const labels = Array.from({ length: DAYS }, (_, i) => i + 1);
+  const rnd = (min, max) => Math.round((min + rng() * (max - min)) / 1000) * 1000;
+
+  const makan = [], transport = [], nonAmplop = [], outHarian = [], inHarian = [], sisaHarian = [];
+  let running = 0;
+  for (let i = 0; i < DAYS; i++) {
+    let masuk = 0;
+    if (i === 0) masuk = 10000000;            // gaji awal bulan
+    else if (i === 14) masuk = 750000;        // bonus tengah bulan
+    else if (rng() < 0.08) masuk = rnd(50000, 300000);
+
+    const m = rnd(15000, 110000);
+    const t = rnd(0, 70000);
+    const n = rng() < 0.45 ? rnd(20000, 150000) : 0;
+    makan.push(m); transport.push(t); nonAmplop.push(n);
+
+    const out = m + t + n;
+    outHarian.push(out);
+    inHarian.push(masuk);
+    running += masuk - out;
+    sisaHarian.push(running);
+  }
+
+  const sum = (a) => a.reduce((x, y) => x + y, 0);
+  const totalIn = sum(inHarian), totalOut = sum(outHarian), saldo = totalIn - totalOut;
+  const rp = (n) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n));
+  const rpShort = (n) => (n >= 1e6 ? (n / 1e6).toFixed(n % 1e6 ? 1 : 0) + 'jt' : n >= 1e3 ? Math.round(n / 1e3) + 'rb' : n);
+  document.getElementById('sumIn').textContent = rp(totalIn);
+  document.getElementById('sumOut').textContent = rp(totalOut);
+  document.getElementById('sumBal').textContent = rp(saldo);
+
+  // ---------- Warna (palet tervalidasi) ----------
+  const C = {
+    expense: '#e34948', balance: '#2a78d6',
+    makan: '#1baf7a', transport: '#eb6834', nonamplop: '#4a3aa7',
+  };
+  const isDark = () => document.documentElement.classList.contains('dark');
+  const ink = () => isDark()
+    ? { grid: 'rgba(148,163,184,.15)', tick: '#94a3b8', tip: '#0f172a', tipText: '#e2e8f0', tipBorder: 'rgba(148,163,184,.3)' }
+    : { grid: 'rgba(100,116,139,.14)', tick: '#64748b', tip: '#ffffff', tipText: '#0f172a', tipBorder: 'rgba(100,116,139,.2)' };
+
+  function gradient(ctx, area, hex) {
+    if (!area) return hex + '22';
+    const g = ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    g.addColorStop(0, hex + '55'); g.addColorStop(1, hex + '00');
+    return g;
+  }
+
+  const baseScales = () => ({
+    x: { grid: { display: false }, ticks: { color: ink().tick, maxRotation: 0, autoSkip: true, maxTicksLimit: 10 }, border: { display: false } },
+    y: { grid: { color: ink().grid }, ticks: { color: ink().tick, callback: (v) => rpShort(v) }, border: { display: false }, beginAtZero: true },
+  });
+  const baseTooltip = () => ({
+    backgroundColor: ink().tip, titleColor: ink().tipText, bodyColor: ink().tipText,
+    borderColor: ink().tipBorder, borderWidth: 1, padding: 10, cornerRadius: 8, displayColors: true, boxPadding: 4,
+    callbacks: { label: (c) => ' ' + c.dataset.label + ': ' + rp(c.parsed.y) },
+  });
+
+  // ---------- Line chart ----------
+  const lineChart = new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Pengeluaran', data: outHarian, borderColor: C.expense, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: .35, fill: true,
+          backgroundColor: (c) => gradient(c.chart.ctx, c.chart.chartArea, C.expense) },
+        { label: 'Sisa Saldo', data: sisaHarian, borderColor: C.balance, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: .35, fill: false },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: baseTooltip() }, scales: baseScales(),
+    },
+  });
+
+  // ---------- Stacked area chart ----------
+  const areaChart = new Chart(document.getElementById('areaChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Makan', data: makan, borderColor: C.makan, backgroundColor: C.makan + '66', borderWidth: 1.5, pointRadius: 0, tension: .3, fill: true },
+        { label: 'Transport', data: transport, borderColor: C.transport, backgroundColor: C.transport + '66', borderWidth: 1.5, pointRadius: 0, tension: .3, fill: true },
+        { label: 'Non-Amplop', data: nonAmplop, borderColor: C.nonamplop, backgroundColor: C.nonamplop + '66', borderWidth: 1.5, pointRadius: 0, tension: .3, fill: true },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: baseTooltip() },
+      scales: { x: baseScales().x, y: { ...baseScales().y, stacked: true } },
+    },
+  });
+
+  // ---------- Tema ----------
+  function applyTheme() {
+    [lineChart, areaChart].forEach((ch) => {
+      ch.options.scales.x.ticks.color = ink().tick;
+      ch.options.scales.y.ticks.color = ink().tick;
+      ch.options.scales.y.grid.color = ink().grid;
+      ch.options.plugins.tooltip = { ...ch.options.plugins.tooltip, ...baseTooltip() };
+      ch.update('none');
+    });
+  }
+  document.getElementById('themeToggle').addEventListener('click', () => {
+    const dark = document.documentElement.classList.toggle('dark');
+    try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch (e) {}
+    applyTheme();
+  });
+</script>
+</body>
+</html>
