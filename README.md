@@ -331,7 +331,7 @@ Sistem otomatis menolak pesan kalau `status_langganan` bukan `active` **atau**
 | Balasan "Nomor belum terdaftar" padahal sudah daftar | Format `nomor_wa` salah. Harus `628...` (tanpa `0`, tanpa `+`). |
 | Data tidak masuk ke `transactions` | Cek Terminal `npm run dev` ada pesan error? Pastikan `SUPABASE_SERVICE_ROLE_KEY` benar. |
 | Di Vercel jalan, tapi lokal tidak (atau sebaliknya) | Pastikan Environment Variables di Vercel sama persis dengan `.env` lokal. |
-| Supabase lambat/gagal setelah beberapa hari | Free tier **auto-pause** jika idle 1 minggu. Buka dashboard Supabase untuk membangunkannya. |
+| Supabase lambat/gagal setelah beberapa hari | Free tier **auto-pause** jika idle 1 minggu. Sudah dicegah oleh **cron keep-alive harian** (`vercel.json` → `/api/keep-alive`). Kalau masih terjadi, cek tab **Cron** di Vercel apakah jalan. |
 
 Lihat pesan error di Terminal tempat `npm run dev` berjalan — biasanya petunjuknya jelas di situ.
 
