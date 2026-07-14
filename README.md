@@ -375,6 +375,8 @@ dashboard-keuangan-wa/
 ### Halaman yang tersedia
 | URL | Untuk siapa | Fungsi |
 |---|---|---|
+| `/` | umum | landing page pemasaran (harga otomatis dari admin) |
+| `/demo` | umum | demo laporan interaktif (data contoh) |
 | `/admin` | kamu (owner) | kelola keluarga & nomor WA + setujui pendaftaran (login password) |
 | `/daftar` | calon pelanggan | form pendaftaran mandiri + info pembayaran |
 | `/panduan` | pelanggan | panduan pemakaian web (ditautkan dari perintah `bantuan`) |
