@@ -20,7 +20,10 @@ Bot balas  : 📊 Bulan ini — Pemasukan / Pengeluaran / Saldo + rincian per ka
 Pelanggan juga bisa ketik `laporan`, `hari`, `hapus`, atau `bantuan`.
 Owner mengelola pelanggan lewat halaman `/admin`.
 
-Panduan ini ditulis untuk **pemula total**. Ikuti berurutan dari atas.
+Panduan ini ditulis untuk **pemula total** (sisi pemasang/admin). Ikuti berurutan dari atas.
+
+> 📱 Mencari cara pakai untuk **pelanggan** (apa yang diketik di WhatsApp,
+> contoh abis gajian, amplop, dll)? Lihat **[PANDUAN-PELANGGAN.md](PANDUAN-PELANGGAN.md)**.
 
 ---
 
