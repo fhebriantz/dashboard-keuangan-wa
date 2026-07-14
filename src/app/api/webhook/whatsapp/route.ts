@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/phone'
-import { parseEntry } from '@/lib/parse-entry'
-import { aiParseEntry } from '@/lib/ai/parse'
+import { parseEntry, type ParsedEntry } from '@/lib/parse-entry'
+import { aiInterpret } from '@/lib/ai/interpret'
+import { aiReadReceipt } from '@/lib/ai/receipt'
+import {
+  applySetBudget,
+  applyMoveBudget,
+  applyDeleteBudget,
+} from '@/lib/budget-actions'
 import { normalizeInbound } from '@/lib/whatsapp/inbound'
 import { sendReply } from '@/lib/whatsapp/outbound'
 import {
@@ -10,6 +16,7 @@ import {
   handleCommand,
   detectSetBudget,
   detectMoveBudget,
+  detectDeleteBudget,
   isRegisterIntent,
   registerInfoText,
 } from '@/lib/whatsapp/commands'
@@ -172,187 +179,155 @@ export async function POST(req: NextRequest) {
     return respond(text)
   }
 
-  // Set anggaran amplop per kategori: "anggaran makan 2jt"
+  // Set anggaran amplop: "anggaran makan 2jt"
   const budgetCmd = detectSetBudget(inbound!.message)
   if (budgetCmd) {
-    const { data: prev } = await supabase
-      .from('category_budgets')
-      .select('nominal')
-      .eq('family_id', family.id)
-      .eq('kategori', budgetCmd.kategori)
-      .maybeSingle()
-    const { error } = await supabase.from('category_budgets').upsert(
-      { family_id: family.id, kategori: budgetCmd.kategori, nominal: budgetCmd.nominal },
-      { onConflict: 'family_id,kategori' },
-    )
-    if (error) {
-      console.error('[webhook] set budget error:', error.message)
-      return respond('Gagal menyimpan anggaran. Coba lagi sebentar.')
-    }
-    await supabase.from('budget_logs').insert({
-      family_id: family.id,
-      kategori: budgetCmd.kategori,
-      aksi: 'set',
-      nominal_lama: prev ? Number(prev.nominal) : null,
-      nominal_baru: budgetCmd.nominal,
-    })
-    return respond(
-      `✅ Anggaran *${budgetCmd.kategori}* diset ${rupiah(budgetCmd.nominal)}/bulan.`,
-    )
+    return respond(await applySetBudget(supabase, family.id, budgetCmd.kategori, budgetCmd.nominal))
   }
 
   // Pindah jatah antar amplop: "pindah makan transport 500rb"
   const moveCmd = detectMoveBudget(inbound!.message)
   if (moveCmd) {
-    const { data: buds } = await supabase
-      .from('category_budgets')
-      .select('kategori, nominal')
-      .eq('family_id', family.id)
-      .in('kategori', [moveCmd.dari, moveCmd.ke])
-    const cur: Record<string, number> = {}
-    ;(buds ?? []).forEach((b) => (cur[b.kategori] = Number(b.nominal)))
-    const dariLama = cur[moveCmd.dari] ?? 0
-    const keLama = cur[moveCmd.ke] ?? 0
-    const dariBaru = Math.max(0, dariLama - moveCmd.nominal)
-    const keBaru = keLama + moveCmd.nominal
+    return respond(await applyMoveBudget(supabase, family.id, moveCmd.dari, moveCmd.ke, moveCmd.nominal))
+  }
 
-    const { error } = await supabase.from('category_budgets').upsert(
-      [
-        { family_id: family.id, kategori: moveCmd.dari, nominal: dariBaru },
-        { family_id: family.id, kategori: moveCmd.ke, nominal: keBaru },
-      ],
-      { onConflict: 'family_id,kategori' },
+  // Hapus amplop: "hapus amplop makan"
+  const delCmd = detectDeleteBudget(inbound!.message)
+  if (delCmd) {
+    return respond(await applyDeleteBudget(supabase, family.id, delCmd.kategori))
+  }
+
+  // -----------------------------------------------------------
+  // 6) Foto struk (kalau ada) -> AI vision baca total. Hanya saat ada gambar.
+  // -----------------------------------------------------------
+  if (inbound!.imageUrl) {
+    const rEntry = await aiReadReceipt(inbound!.imageUrl)
+    if (rEntry) return recordAndRespond(rEntry)
+    return respond(
+      '📷 Struk tak terbaca (atau fitur foto belum aktif). Ketik manual saja, mis. "Belanja 150000".',
     )
-    if (error) {
-      console.error('[webhook] move budget error:', error.message)
-      return respond('Gagal memindahkan jatah. Coba lagi sebentar.')
+  }
+
+  // -----------------------------------------------------------
+  // 7) Catat transaksi. Rule-based dulu (gratis). Kalau gagal, AI paham maksud
+  //    (transaksi ATAU perintah) — sekali panggil. Kalau AI mati/limit -> null.
+  // -----------------------------------------------------------
+  const ruleEntry = parseEntry(inbound!.message)
+  if (ruleEntry) return recordAndRespond(ruleEntry)
+
+  const ai = await aiInterpret(inbound!.message)
+  if (ai) {
+    switch (ai.action) {
+      case 'catat':
+        return recordAndRespond(ai.entry)
+      case 'set_amplop':
+        return respond(await applySetBudget(supabase, family.id, ai.kategori, ai.nominal))
+      case 'pindah_amplop':
+        return respond(await applyMoveBudget(supabase, family.id, ai.dari, ai.ke, ai.nominal))
+      case 'hapus_amplop':
+        return respond(await applyDeleteBudget(supabase, family.id, ai.kategori))
+      case 'total':
+      case 'laporan':
+      case 'hari':
+      case 'hapus':
+      case 'bantuan': {
+        const map = { total: 'total', laporan: 'laporan', hari: 'today', hapus: 'hapus', bantuan: 'help' } as const
+        return respond(await handleCommand(supabase, family, user, map[ai.action]))
+      }
     }
-    await supabase.from('budget_logs').insert([
-      { family_id: family.id, kategori: moveCmd.dari, aksi: 'pindah_keluar', nominal_lama: dariLama, nominal_baru: dariBaru },
-      { family_id: family.id, kategori: moveCmd.ke, aksi: 'pindah_masuk', nominal_lama: keLama, nominal_baru: keBaru },
-    ])
-    return respond(
-      `✅ Pindah ${rupiah(moveCmd.nominal)} dari *${moveCmd.dari}* ke *${moveCmd.ke}*.\n` +
-        `${moveCmd.dari}: ${rupiah(dariBaru)} · ${moveCmd.ke}: ${rupiah(keBaru)}`,
-    )
   }
 
-  // -----------------------------------------------------------
-  // 6) Kalau bukan perintah, catat sebagai pemasukan/pengeluaran.
-  // -----------------------------------------------------------
-  // Rule-based dulu (gratis & instan). Kalau gagal, baru coba AI cadangan
-  // (kalau diaktifkan). Kalau AI limit/error, aiParseEntry balik null -> tetap
-  // jatuh ke pesan "format tidak dikenali" di bawah.
-  const entry = parseEntry(inbound!.message) ?? (await aiParseEntry(inbound!.message))
-  if (!entry) {
-    return respond(
-      'Format tidak dikenali. Contoh:\n' +
-        '• "Bensin 50000" (pengeluaran)\n' +
-        '• "Makan siang 35rb"\n' +
-        '• "masuk gaji 5000000" (pemasukan)\n\n' +
-        'Ketik *bantuan* untuk menu.',
-    )
-  }
+  return respond(
+    'Format tidak dikenali. Contoh:\n' +
+      '• "Bensin 50000" (pengeluaran)\n' +
+      '• "Makan siang 35rb"\n' +
+      '• "masuk gaji 5000000" (pemasukan)\n\n' +
+      'Ketik *bantuan* untuk menu.',
+  )
 
-  // -----------------------------------------------------------
-  // 7) Tentukan kategori: pemasukan -> null; pengeluaran -> override/auto,
-  //    lalu jika masih 'Lainnya' coba INGATAN (auto-belajar) sebelum bertanya.
-  // -----------------------------------------------------------
-  let kategori: string | null =
-    entry.tipe === 'pemasukan' ? null : entry.kategori ?? 'Lainnya'
-  if (entry.tipe === 'pengeluaran' && kategori === 'Lainnya' && !entry.kategoriManual) {
-    const remembered = await lookupCategoryMemory(supabase, family.id, entry.nama)
-    if (remembered) kategori = remembered
-  }
+  // --- pencatatan transaksi (dipakai rule-based, AI, & struk) ---
+  async function recordAndRespond(entry: ParsedEntry) {
+    const fam = family!
+    const usr = user!
+    let kategori: string | null =
+      entry.tipe === 'pemasukan' ? null : entry.kategori ?? 'Lainnya'
+    if (entry.tipe === 'pengeluaran' && kategori === 'Lainnya' && !entry.kategoriManual) {
+      const remembered = await lookupCategoryMemory(supabase, fam.id, entry.nama)
+      if (remembered) kategori = remembered
+    }
 
-  // Simpan transaksi. family_id & user_id DIKUNCI dari hasil lookup server-side.
-  const { data: inserted, error: insErr } = await supabase
-    .from('transactions')
-    .insert({
-      family_id: family.id,
-      user_id: user.id,
-      nama_pengeluaran: entry.nama,
-      nominal: entry.nominal,
-      tipe: entry.tipe,
-      kategori,
-    })
-    .select('id')
-    .single()
-
-  if (insErr) {
-    console.error('[webhook] insert error:', insErr.message)
-    return respond('Gagal menyimpan catatan. Coba lagi beberapa saat.')
-  }
-
-  // Belajar dari override manual (#kategori) untuk pemakaian berikutnya.
-  if (entry.tipe === 'pengeluaran' && entry.kategoriManual && entry.kategori) {
-    await learnCategoryMemory(supabase, family.id, entry.nama, entry.kategori)
-  }
-
-  // -----------------------------------------------------------
-  // 8) Balasan sesuai tipe.
-  // -----------------------------------------------------------
-  if (entry.tipe === 'pemasukan') {
-    return respond(
-      `✅ Pemasukan tercatat untuk Keluarga *${family.nama_keluarga}*\n` +
-        `📝 ${entry.nama}\n💵 ${rupiah(entry.nominal)}`,
-    )
-  }
-
-  const kat = kategori ?? 'Lainnya'
-  const lines = [
-    `✅ Tercatat untuk Keluarga *${family.nama_keluarga}*`,
-    `📝 ${entry.nama}`,
-    `${emojiOf(kat)} ${kat} · ${rupiah(entry.nominal)}`,
-  ]
-
-  // Kategori tak terdeteksi (auto 'Lainnya', bukan override) -> tanya balik.
-  if (kat === 'Lainnya' && !entry.kategoriManual && inserted) {
-    await supabase
-      .from('users')
-      .update({ pending_tx_id: inserted.id, pending_at: new Date().toISOString() })
-      .eq('id', user.id)
-    lines.push(
-      '',
-      '❓ Masuk kategori apa? Balas salah satu:',
-      'Makan · Transport · Tagihan · Belanja',
-      'Kesehatan · Hiburan · Anak · Tabungan',
-      '(abaikan jika mau tetap di Lainnya)',
-    )
-    return respond(lines.join('\n'))
-  }
-
-  // Umpan balik amplop: kalau kategori ini punya anggaran, tampilkan sisanya;
-  // kalau tidak, jatuh ke anggaran keseluruhan (jika di-set).
-  const monthStart = wibMonthStartISO()
-  const [{ data: budgetRow }, { data: catSpent }] = await Promise.all([
-    supabase
-      .from('category_budgets')
-      .select('nominal')
-      .eq('family_id', family.id)
-      .eq('kategori', kat)
-      .maybeSingle(),
-    supabase
+    const { data: inserted, error: insErr } = await supabase
       .from('transactions')
-      .select('nominal')
-      .eq('family_id', family.id)
-      .eq('kategori', kat)
-      .eq('tipe', 'pengeluaran')
-      .gte('created_at', monthStart),
-  ])
+      .insert({
+        family_id: fam.id,
+        user_id: usr.id,
+        nama_pengeluaran: entry.nama,
+        nominal: entry.nominal,
+        tipe: entry.tipe,
+        kategori,
+      })
+      .select('id')
+      .single()
+    if (insErr) {
+      console.error('[webhook] insert error:', insErr.message)
+      return respond('Gagal menyimpan catatan. Coba lagi beberapa saat.')
+    }
 
-  if (budgetRow) {
-    const spent = (catSpent ?? []).reduce((s, r) => s + Number(r.nominal), 0)
-    const sisa = Number(budgetRow.nominal) - spent
-    lines.push(
-      sisa >= 0
-        ? `📊 Sisa amplop ${kat}: ${rupiah(sisa)}`
-        : `⚠️ Amplop ${kat} lewat ${rupiah(-sisa)}`,
-    )
-  } else if (kat !== 'Lainnya') {
-    // Beri tahu bahwa kategori ini belum punya amplop (tak mengurangi amplop).
-    lines.push(`ℹ️ Belum ada amplop ${kat} — set: amplop ${kat.toLowerCase()} <nominal>`)
-  }
+    if (entry.tipe === 'pengeluaran' && entry.kategoriManual && entry.kategori) {
+      await learnCategoryMemory(supabase, fam.id, entry.nama, entry.kategori)
+    }
 
-  return respond(lines.join('\n'))
+    if (entry.tipe === 'pemasukan') {
+      return respond(
+        `✅ Pemasukan tercatat untuk Keluarga *${fam.nama_keluarga}*\n` +
+          `📝 ${entry.nama}\n💵 ${rupiah(entry.nominal)}`,
+      )
+    }
+
+    const kat = kategori ?? 'Lainnya'
+    const lines = [
+      `✅ Tercatat untuk Keluarga *${fam.nama_keluarga}*`,
+      `📝 ${entry.nama}`,
+      `${emojiOf(kat)} ${kat} · ${rupiah(entry.nominal)}`,
+    ]
+
+    if (kat === 'Lainnya' && !entry.kategoriManual && inserted) {
+      await supabase
+        .from('users')
+        .update({ pending_tx_id: inserted.id, pending_at: new Date().toISOString() })
+        .eq('id', usr.id)
+      lines.push(
+        '',
+        '❓ Masuk kategori apa? Balas salah satu:',
+        'Makan · Transport · Tagihan · Belanja',
+        'Kesehatan · Hiburan · Anak · Tabungan',
+        '(abaikan jika mau tetap di Lainnya)',
+      )
+      return respond(lines.join('\n'))
+    }
+
+    const monthStart = wibMonthStartISO()
+    const [{ data: budgetRow }, { data: catSpent }] = await Promise.all([
+      supabase.from('category_budgets').select('nominal').eq('family_id', fam.id).eq('kategori', kat).maybeSingle(),
+      supabase
+        .from('transactions')
+        .select('nominal')
+        .eq('family_id', fam.id)
+        .eq('kategori', kat)
+        .eq('tipe', 'pengeluaran')
+        .gte('created_at', monthStart),
+    ])
+
+    if (budgetRow) {
+      const spent = (catSpent ?? []).reduce((s, r) => s + Number(r.nominal), 0)
+      const sisa = Number(budgetRow.nominal) - spent
+      lines.push(
+        sisa >= 0 ? `📊 Sisa amplop ${kat}: ${rupiah(sisa)}` : `⚠️ Amplop ${kat} lewat ${rupiah(-sisa)}`,
+      )
+    } else if (kat !== 'Lainnya') {
+      lines.push(`ℹ️ Belum ada amplop ${kat} — set: amplop ${kat.toLowerCase()} <nominal>`)
+    }
+
+    return respond(lines.join('\n'))
+  } // akhir recordAndRespond
 }

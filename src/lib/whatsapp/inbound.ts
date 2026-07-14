@@ -13,10 +13,11 @@
 export type InboundMessage = {
   sender: string
   message: string
+  imageUrl?: string // ada jika pesan berupa foto (mis. struk)
 }
 
 export function normalizeInbound(body: Record<string, any>): InboundMessage | null {
-  // Bentuk resmi WhatsApp Cloud API (Meta) — nested.
+  // Bentuk resmi WhatsApp Cloud API (Meta) — nested (gambar butuh unduh via Graph, dilewati).
   const cloud = body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]
   if (cloud) {
     return {
@@ -28,7 +29,16 @@ export function normalizeInbound(body: Record<string, any>): InboundMessage | nu
   // Bentuk flat (Fonnte / Wablas / Baileys wrapper / dsb).
   const sender = body.sender ?? body.sender_number ?? body.phone ?? body.from
   const message = body.message ?? body.message_text ?? body.text ?? body.body
-
   if (sender == null && message == null) return null
-  return { sender: String(sender ?? ''), message: String(message ?? '') }
+
+  // Gambar: Fonnte kirim type="image" + url berisi link media.
+  const type = String(body.type ?? '').toLowerCase()
+  const url = body.url || body.media || body.imageUrl || body.file
+  let imageUrl: string | undefined
+  if (url) {
+    const u = String(url)
+    if (type === 'image' || /\.(jpe?g|png|webp)(\?|$)/i.test(u)) imageUrl = u
+  }
+
+  return { sender: String(sender ?? ''), message: String(message ?? ''), imageUrl }
 }

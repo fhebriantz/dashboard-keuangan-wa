@@ -68,6 +68,19 @@ export function detectMoveBudget(
 }
 
 /**
+ * Deteksi perintah hapus amplop:
+ *   "hapus amplop makan" / "batal anggaran transport"
+ */
+export function detectDeleteBudget(message: string): { kategori: string } | null {
+  const m = (message ?? '')
+    .trim()
+    .match(/^(hapus|batalkan|batal)\s+(amplop|anggaran|budget)\b\s*(.+)$/i)
+  if (!m) return null
+  const kategori = normalizeCategory(m[3].trim())
+  return kategori ? { kategori } : null
+}
+
+/**
  * Perintah bot. Sengaja menerima DUA gaya:
  *   - dengan slash: /help, /total
  *   - tanpa slash : help, total, bantuan

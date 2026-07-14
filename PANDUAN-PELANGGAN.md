@@ -179,8 +179,25 @@ Makan: Rp 1.500.000 · Transport: Rp 1.200.000
 ```
 > Kata lain: `geser makan transport 500rb` atau `transfer makan transport 500rb`.
 
-Semua perubahan amplop (set/tambah/pindah) tercatat di bagian **"Riwayat Amplop"**
-pada laporan web.
+### Menghapus amplop
+```
+hapus amplop makan
+```
+Amplop-nya hilang, tapi **pengeluaran kategori itu tetap tercatat** (cuma tak ada
+batas lagi).
+
+Semua perubahan amplop (set/tambah/pindah/hapus) tercatat di bagian
+**"Riwayat Amplop"** pada laporan web.
+
+---
+
+### ✨ Kalau AI diaktifkan (opsional)
+Kalau admin mengaktifkan AI, kamu bisa lebih bebas:
+- **Bahasa bebas** — mis. "geser 50rb dari jajan ke transport", "amplop makan hapus
+  aja", "laporan bulan ini dong" tetap dimengerti.
+- **Foto struk** 📷 — kirim foto struk belanja, totalnya otomatis tercatat.
+
+Tanpa AI pun semua tetap jalan dengan perintah biasa di atas.
 
 ---
 
