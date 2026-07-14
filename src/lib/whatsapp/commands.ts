@@ -84,13 +84,21 @@ function catLine(cat: CategoryRow): string {
   return `${e} ${cat.kategori}: ${rupiah(cat.spent)}`
 }
 
+/** Baris "Total amplop" (jumlah semua amplop) — otomatis, null jika belum ada. */
+function totalAmplopLine(totalBudget: number | null, pengeluaran: number): string | null {
+  if (totalBudget == null) return null
+  const sisa = totalBudget - pengeluaran
+  const tail = sisa >= 0 ? `(sisa ${rupiah(sisa)})` : `⚠️ lewat ${rupiah(-sisa)}`
+  return `🎯 Total amplop: ${rupiah(pengeluaran)} / ${rupiah(totalBudget)} ${tail}`
+}
+
 /** Link laporan web keluarga, jika APP_URL di-set. */
 function reportLink(familyId: string): string | null {
   const base = process.env.APP_URL?.replace(/\/$/, '')
   return base ? `${base}/laporan/${familyId}` : null
 }
 
-type Family = { id: string; nama_keluarga: string; anggaran_bulanan: number | null }
+type Family = { id: string; nama_keluarga: string }
 type User = { id: string; nama: string }
 
 const HELP_TEXT =
@@ -151,6 +159,8 @@ export async function handleCommand(
       if (data.categories.length > 0) {
         msg += '\n\n*Per kategori:*\n' + data.categories.map(catLine).join('\n')
       }
+      const tl = totalAmplopLine(data.totalBudget, data.pengeluaran)
+      if (tl) msg += '\n\n' + tl
       return msg
     }
 
@@ -175,6 +185,8 @@ export async function handleCommand(
 
       if (data.categories.length > 0) {
         msg += '\n*Per kategori:*\n' + data.categories.map(catLine).join('\n') + '\n'
+        const tl = totalAmplopLine(data.totalBudget, data.pengeluaran)
+        if (tl) msg += tl + '\n'
       }
 
       const rincian = data.rows.slice(0, 15).map((r) => {

@@ -34,14 +34,12 @@ export async function createFamily(formData: FormData) {
   if (!nama) redirect('/admin?err=' + encodeURIComponent('Nama keluarga wajib diisi'))
 
   const status = String(formData.get('status_langganan') ?? 'active')
-  const anggaranRaw = String(formData.get('anggaran_bulanan') ?? '').trim()
   const expiredRaw = String(formData.get('expired_at') ?? '').trim()
 
   const supabase = createAdminClient()
   const { error } = await supabase.from('families').insert({
     nama_keluarga: nama,
     status_langganan: status === 'expired' ? 'expired' : 'active',
-    anggaran_bulanan: anggaranRaw ? Number(anggaranRaw) : null,
     expired_at: expiredRaw ? expiredRaw : null,
   })
   if (error) redirect('/admin?err=' + encodeURIComponent(error.message))

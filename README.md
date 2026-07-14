@@ -10,11 +10,11 @@ Contoh pemakaian oleh user:
 User (WA)  : Bensin 50000
 Bot balas  : ✅ Tercatat untuk Keluarga Budi
              📝 Bensin
-             💰 Rp 50.000
-             📊 Sisa anggaran bulan ini: Rp 2.450.000
+             🚗 Transport · Rp 50.000
+             📊 Sisa amplop Transport: Rp 450.000
 
 User (WA)  : total
-Bot balas  : 📊 Bulan ini — Total: Rp 50.000 · Sisa: Rp 2.450.000
+Bot balas  : 📊 Bulan ini — Pemasukan / Pengeluaran / Saldo + rincian per kategori
 ```
 
 Pelanggan juga bisa ketik `laporan`, `hari`, `hapus`, atau `bantuan`.
@@ -119,6 +119,7 @@ Buka folder ini di VS Code: `code .`
    - `0004_pending_kategori.sql` → bot **bertanya kategori** saat tak terdeteksi
    - `0005_registrations.sql` → **pendaftaran mandiri** calon pelanggan
    - `0006_pricing_dan_generalisasi.sql` → **harga/paket dari admin** + peran anggota bebas
+   - `0007_hapus_anggaran_bulanan.sql` → hapus plafon total (cukup amplop + saldo)
 
 ### c. Ambil kunci API
 1. Menu kiri → **Project Settings** (ikon gerigi) → **API**.
@@ -187,7 +188,6 @@ Supabase (tanpa coding):
 2. Isi:
    - `nama_keluarga`: `Budi`
    - `status_langganan`: `active`
-   - `anggaran_bulanan`: `2500000` *(opsional, boleh dikosongkan)*
 3. **Save**. Salin nilai kolom `id` (UUID panjang) yang muncul.
 
 ### b. Tambah anggota (suami & istri)
@@ -220,7 +220,7 @@ Ganti `628123456789` dengan nomor yang kamu daftarkan, dan `secret=` dengan
 Hasil yang benar:
 
 ```json
-{"reply":"✅ Tercatat untuk Keluarga *Budi*\n📝 Bensin\n💰 Rp 50.000\n📊 Sisa anggaran bulan ini: Rp 2.450.000"}
+{"reply":"✅ Tercatat untuk Keluarga *Budi*\n📝 Bensin\n🚗 Transport · Rp 50.000"}
 ```
 
 Cek juga di Supabase → **Table Editor → transactions**, datanya harus muncul. ✅
@@ -265,7 +265,7 @@ Selain mencatat pengeluaran, pelanggan bisa mengetik (dengan atau tanpa `/`):
 | Ketik | Fungsi |
 |---|---|
 | `bantuan` / `help` / `menu` | tampilkan daftar perintah |
-| `total` / `saldo` | total & sisa anggaran bulan ini |
+| `total` / `saldo` | pemasukan, pengeluaran, saldo + rekap per kategori |
 | `laporan` / `rekap` | rincian transaksi bulan ini (15 terbaru) |
 | `hari` / `today` | pengeluaran hari ini |
 | `hapus` / `batal` | batalkan catatan terakhir milik sendiri |

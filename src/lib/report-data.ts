@@ -20,6 +20,7 @@ export type MonthlyData = {
   pengeluaran: number
   saldo: number
   categories: CategoryRow[]
+  totalBudget: number | null // jumlah semua amplop; null jika belum ada amplop
 }
 
 /**
@@ -69,5 +70,17 @@ export async function monthlyData(
     .map((k) => ({ kategori: k, spent: spentByCat[k] ?? 0, budget: budgetByCat[k] ?? null }))
     .sort((a, b) => b.spent - a.spent)
 
-  return { rows, pemasukan, pengeluaran, saldo: pemasukan - pengeluaran, categories }
+  const budgetValues = Object.values(budgetByCat)
+  const totalBudget = budgetValues.length
+    ? budgetValues.reduce((s, v) => s + v, 0)
+    : null
+
+  return {
+    rows,
+    pemasukan,
+    pengeluaran,
+    saldo: pemasukan - pengeluaran,
+    categories,
+    totalBudget,
+  }
 }

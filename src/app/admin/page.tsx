@@ -20,7 +20,6 @@ type Family = {
   id: string
   nama_keluarga: string
   status_langganan: string
-  anggaran_bulanan: number | null
   expired_at: string | null
 }
 type User = {
@@ -30,9 +29,6 @@ type User = {
   nomor_wa: string
   role: string
 }
-
-const rupiah = (n: number | null) =>
-  n == null ? '—' : 'Rp ' + new Intl.NumberFormat('id-ID').format(n)
 
 export default async function AdminPage({
   searchParams,
@@ -46,7 +42,7 @@ export default async function AdminPage({
   const [{ data: families }, { data: users }, { data: regs }] = await Promise.all([
     supabase
       .from('families')
-      .select('id, nama_keluarga, status_langganan, anggaran_bulanan, expired_at')
+      .select('id, nama_keluarga, status_langganan, expired_at')
       .order('created_at', { ascending: false }),
     supabase
       .from('users')
@@ -198,10 +194,6 @@ export default async function AdminPage({
             </select>
           </label>
           <label style={lab}>
-            Anggaran / bulan (opsional)
-            <input name="anggaran_bulanan" type="number" placeholder="2500000" style={inp} />
-          </label>
-          <label style={lab}>
             Berlaku sampai (opsional)
             <input name="expired_at" type="date" style={inp} />
           </label>
@@ -257,7 +249,6 @@ export default async function AdminPage({
               <tr>
                 <th style={th}>Keluarga</th>
                 <th style={th}>Status</th>
-                <th style={th}>Anggaran</th>
                 <th style={th}>Laporan</th>
                 <th style={th}>Aksi</th>
               </tr>
@@ -271,7 +262,6 @@ export default async function AdminPage({
                       {f.status_langganan}
                     </span>
                   </td>
-                  <td style={td}>{rupiah(f.anggaran_bulanan)}</td>
                   <td style={td}>
                     <a
                       href={`/laporan/${f.id}`}

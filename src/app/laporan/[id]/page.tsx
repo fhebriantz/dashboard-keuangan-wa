@@ -23,7 +23,7 @@ export default async function LaporanPage({
 
   const { data: family } = await supabase
     .from('families')
-    .select('id, nama_keluarga, status_langganan, anggaran_bulanan')
+    .select('id, nama_keluarga, status_langganan')
     .eq('id', id)
     .maybeSingle()
 
@@ -38,7 +38,8 @@ export default async function LaporanPage({
   }
 
   const data = await monthlyData(supabase, id, wibMonthStartISO())
-  const { pemasukan, pengeluaran, saldo, categories, rows } = data
+  const { pemasukan, pengeluaran, saldo, categories, rows, totalBudget } = data
+  const sisaTotal = totalBudget != null ? totalBudget - pengeluaran : null
 
   return (
     <main style={wrap}>
@@ -64,6 +65,14 @@ export default async function LaporanPage({
             {rupiah(saldo)}
           </div>
         </div>
+        {totalBudget != null && (
+          <div style={statCard}>
+            <div style={statLabel}>Sisa total amplop</div>
+            <div style={{ ...statBig, color: (sisaTotal ?? 0) >= 0 ? '#16a34a' : '#dc2626' }}>
+              {rupiah(sisaTotal ?? 0)}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ---------- Amplop per kategori ---------- */}

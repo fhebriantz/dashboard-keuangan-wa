@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   const { data: user, error: userErr } = await supabase
     .from('users')
     .select(
-      'id, nama, family_id, pending_tx_id, pending_at, families ( id, nama_keluarga, status_langganan, expired_at, anggaran_bulanan )',
+      'id, nama, family_id, pending_tx_id, pending_at, families ( id, nama_keluarga, status_langganan, expired_at )',
     )
     .eq('nomor_wa', sender)
     .maybeSingle()
@@ -265,16 +265,6 @@ export async function POST(req: NextRequest) {
       sisa >= 0
         ? `📊 Sisa amplop ${kategori}: ${rupiah(sisa)}`
         : `⚠️ Amplop ${kategori} lewat ${rupiah(-sisa)}`,
-    )
-  } else if (family.anggaran_bulanan != null) {
-    const { data: spent } = await supabase.rpc('family_spent_this_month', {
-      p_family_id: family.id,
-    })
-    const sisa = Number(family.anggaran_bulanan) - Number(spent ?? 0)
-    lines.push(
-      sisa >= 0
-        ? `📊 Sisa anggaran bulan ini: ${rupiah(sisa)}`
-        : `⚠️ Anggaran bulan ini terlampaui ${rupiah(-sisa)}`,
     )
   }
 
