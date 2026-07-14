@@ -25,7 +25,9 @@ export async function aiParseEntry(message: string): Promise<ParsedEntry | null>
   if (process.env.AI_PROVIDER !== 'gemini') return null
   const key = process.env.GEMINI_API_KEY
   if (!key) return null
-  const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash'
+  // Pakai varian "lite-latest": cepat (~1 dtk), murah, dan auto-ikut versi
+  // terbaru (tak kena "model pensiun"). Model non-lite bisa 10+ dtk -> timeout.
+  const model = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest'
 
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), 7000)
