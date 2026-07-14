@@ -134,8 +134,9 @@ const HELP_TEXT =
   '• masuk gaji 5000000\n' +
   '• pemasukan bonus 1jt\n\n' +
   'Atur *amplop* (jatah per kategori):\n' +
-  '• anggaran makan 2jt\n' +
-  '• anggaran transport 500rb\n\n' +
+  '• amplop makan 2jt\n' +
+  '• amplop transport 500rb\n' +
+  '• pindah makan transport 300rb\n\n' +
   'Perintah lain:\n' +
   '• *total* — ringkasan + per kategori\n' +
   '• *laporan* — rekap lengkap bulan ini\n' +

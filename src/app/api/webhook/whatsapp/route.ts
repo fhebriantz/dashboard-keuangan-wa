@@ -347,7 +347,7 @@ export async function POST(req: NextRequest) {
     )
   } else if (kat !== 'Lainnya') {
     // Beri tahu bahwa kategori ini belum punya amplop (tak mengurangi amplop).
-    lines.push(`ℹ️ Belum ada amplop ${kat} — set: anggaran ${kat.toLowerCase()} <nominal>`)
+    lines.push(`ℹ️ Belum ada amplop ${kat} — set: amplop ${kat.toLowerCase()} <nominal>`)
   }
 
   return respond(lines.join('\n'))

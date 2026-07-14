@@ -90,12 +90,13 @@ export default function PanduanPage() {
       <Section title="4. Amplop — jatah per kategori">
         <p style={p}>Bagi uang ke "amplop" tiap kategori:</p>
         <Chat lines={[
-          { from: 'u', text: 'anggaran makan 2jt' },
+          { from: 'u', text: 'amplop makan 2jt' },
           { from: 'b', text: '✅ Anggaran Makan diset Rp 2.000.000/bulan.' },
           { from: 'u', text: 'nasi padang 25000' },
           { from: 'b', text: '🍔 Makan · Rp 25.000\n📊 Sisa amplop Makan: Rp 1.975.000' },
         ]} />
-        <p style={p}><b>Menambah amplop:</b> kirim ulang angka lebih besar (<code style={code}>anggaran transport 1jt</code>).</p>
+        <p style={p}><b>Menambah amplop:</b> kirim ulang angka lebih besar (<code style={code}>amplop transport 1jt</code>).</p>
+        <p style={muted}>Kata <code style={code}>amplop</code>, <code style={code}>anggaran</code>, dan <code style={code}>budget</code> sama saja.</p>
         <p style={p}><b>Pindah antar amplop:</b> <code style={code}>pindah makan transport 500rb</code> — kurangi Makan, tambah Transport.</p>
       </Section>
 
@@ -103,9 +104,9 @@ export default function PanduanPage() {
         <p style={p}>Alur sebulan yang umum, dari terima gaji sampai belanja harian:</p>
         <Chat lines={[
           { from: 'u', text: 'masuk gaji 10000000' },
-          { from: 'u', text: 'anggaran makan 2500000' },
-          { from: 'u', text: 'anggaran transport 700000' },
-          { from: 'u', text: 'anggaran tabungan 3000000' },
+          { from: 'u', text: 'amplop makan 2500000' },
+          { from: 'u', text: 'amplop transport 700000' },
+          { from: 'u', text: 'amplop tabungan 3000000' },
           { from: 'u', text: 'total' },
           { from: 'b', text: '📊 Pemasukan 10jt · Pengeluaran 0 · Saldo 10jt\n🎯 Total amplop: 0 / 6,2jt' },
           { from: 'u', text: 'nasi padang 25000' },

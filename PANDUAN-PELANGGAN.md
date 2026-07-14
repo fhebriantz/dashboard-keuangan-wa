@@ -112,7 +112,7 @@ kado ultah 100rb #hiburan
 
 **Kategori tidak ada di daftar?** Saat bot bertanya, balas saja **nama kategori
 buatanmu** — mis. `olahraga` atau `donasi`. Bot menerimanya sebagai kategori baru
-(bisa diberi amplop juga: `anggaran olahraga 200rb`).
+(bisa diberi amplop juga: `amplop olahraga 200rb`).
 
 **Bot belajar otomatis** 🧠 — sekali kamu kategorikan sebuah nama (mis. "kado" →
 Belanja), lain kali pengeluaran dengan nama serupa **langsung** masuk kategori itu
@@ -123,12 +123,12 @@ tanpa ditanya lagi.
 ## 5. Amplop — jatah per kategori
 
 "Amplop" = **jatah bulanan** untuk tiap kategori, seperti membagi uang ke amplop
-terpisah. Set dengan **`anggaran <kategori> <nominal>`**:
+terpisah. Set dengan **`amplop <kategori> <nominal>`**:
 
 ```
-anggaran makan 2jt
-anggaran transport 500rb
-anggaran tagihan 1jt
+amplop makan 2jt
+amplop transport 500rb
+amplop tagihan 1jt
 ```
 Bot balas:
 ```
@@ -149,14 +149,14 @@ Kalau amplop terlampaui, bot memperingatkan (tapi tetap dicatat — hanya alarm)
 ⚠️ Amplop Makan lewat Rp 150.000
 ```
 
-> Kata lain yang juga bisa: `budget makan 2jt` atau `amplop makan 2jt`.
+> Kata lain yang juga bisa: `anggaran makan 2jt` atau `budget makan 2jt` — sama saja.
 
 ### Menambah / mengisi ulang amplop
 Amplop habis di tengah bulan? Tinggal **kirim ulang dengan angka baru** —
-angka terakhir yang berlaku:
+angka terakhir yang berlaku (mengganti, bukan menambah, jadi tulis total baru):
 ```
-anggaran transport 700000     → jatah awal Rp 700.000
-anggaran transport 1000000    → dinaikkan jadi Rp 1.000.000 (top-up +300rb)
+amplop transport 700000      → jatah awal Rp 700.000
+amplop transport 1000000     → dinaikkan jadi Rp 1.000.000
 ```
 Sisa amplop & "Total amplop" langsung menyesuaikan.
 
@@ -192,11 +192,11 @@ masuk gaji 10000000
 
 **b. Bagi ke amplop (rencana belanja)**
 ```
-anggaran makan 2500000
-anggaran transport 700000
-anggaran tagihan 1500000
-anggaran belanja 1000000
-anggaran tabungan 3000000
+amplop makan 2500000
+amplop transport 700000
+amplop tagihan 1500000
+amplop belanja 1000000
+amplop tabungan 3000000
 ```
 
 **c. Cek rencana**
@@ -285,7 +285,7 @@ masuk gaji 10000000     → pemasukan
 
 **Amplop:**
 ```
-anggaran makan 2jt              → set/ubah jatah kategori Makan
+amplop makan 2jt                → set/ubah jatah kategori Makan
 pindah makan transport 500rb    → geser jatah antar kategori
 ```
 
