@@ -102,6 +102,12 @@ function catLine(cat: CategoryRow): string {
   return `${e} ${cat.kategori}: ${rupiah(cat.spent)}`
 }
 
+/** Link ke halaman panduan web, jika APP_URL di-set. */
+function panduanLink(): string {
+  const base = process.env.APP_URL?.replace(/\/$/, '')
+  return base ? `\n\n📖 Panduan lengkap & contoh kasus:\n${base}/panduan` : ''
+}
+
 /** Baris "Total amplop" (jumlah semua amplop) — otomatis, null jika belum ada. */
 function totalAmplopLine(totalBudget: number | null, pengeluaran: number): string | null {
   if (totalBudget == null) return null
@@ -165,7 +171,7 @@ export async function handleCommand(
 ): Promise<string> {
   switch (type) {
     case 'help':
-      return HELP_TEXT
+      return HELP_TEXT + panduanLink()
 
     case 'total': {
       const data = await monthlyData(supabase, family.id, wibMonthStartISO())

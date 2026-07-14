@@ -377,6 +377,7 @@ dashboard-keuangan-wa/
 |---|---|---|
 | `/admin` | kamu (owner) | kelola keluarga & nomor WA + setujui pendaftaran (login password) |
 | `/daftar` | calon pelanggan | form pendaftaran mandiri + info pembayaran |
+| `/panduan` | pelanggan | panduan pemakaian web (ditautkan dari perintah `bantuan`) |
 | `/laporan/<family_id>` | pelanggan | lihat laporan keuangan bulan ini |
 | `/api/webhook/whatsapp` | gateway WA | menerima pesan (bukan untuk dibuka manual) |
 
