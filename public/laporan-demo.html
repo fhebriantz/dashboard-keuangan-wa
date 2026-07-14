@@ -81,6 +81,16 @@
       </div>
     </section>
 
+    <!-- Donut: komposisi -->
+    <section class="card mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <h2 class="text-base font-bold">Komposisi Pengeluaran</h2>
+      <p class="text-sm text-slate-500 dark:text-slate-400">Porsi tiap kategori bulan ini</p>
+      <div class="mt-4 flex flex-col items-center gap-6 sm:flex-row sm:justify-center">
+        <div style="height:220px;width:220px"><canvas id="donutChart"></canvas></div>
+        <div id="donutLegend" class="grid w-full gap-2 sm:max-w-xs"></div>
+      </div>
+    </section>
+
     <!-- Line chart -->
     <section class="card mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -213,13 +223,52 @@
     },
   });
 
+  // ---------- Donut: komposisi pengeluaran ----------
+  const compLabels = ['Makan', 'Transport', 'Non-Amplop'];
+  const compData = [sum(makan), sum(transport), sum(nonAmplop)];
+  const compColors = [C.makan, C.transport, C.nonamplop];
+  const compTotal = sum(compData);
+
+  const centerText = {
+    id: 'centerText',
+    afterDraw(chart) {
+      const { ctx, chartArea: { left, right, top, bottom } } = chart;
+      const x = (left + right) / 2, y = (top + bottom) / 2;
+      ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = ink().tick; ctx.font = '600 12px Inter';
+      ctx.fillText('Total', x, y - 11);
+      ctx.fillStyle = isDark() ? '#f1f5f9' : '#0f172a'; ctx.font = '800 18px Inter';
+      ctx.fillText(rpShort(compTotal), x, y + 9);
+      ctx.restore();
+    },
+  };
+
+  const donutChart = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: { labels: compLabels, datasets: [{ data: compData, backgroundColor: compColors, borderWidth: 2, borderColor: isDark() ? '#0f172a' : '#ffffff', hoverOffset: 6 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: { legend: { display: false }, tooltip: { ...baseTooltip(), callbacks: { label: (c) => ' ' + c.label + ': ' + rp(c.parsed) + ' (' + Math.round((c.parsed / compTotal) * 100) + '%)' } } },
+    },
+    plugins: [centerText],
+  });
+
+  document.getElementById('donutLegend').innerHTML = compLabels.map((l, i) =>
+    '<div class="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-slate-800/60">' +
+    '<span class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full" style="background:' + compColors[i] + '"></span>' + l + '</span>' +
+    '<span class="font-semibold">' + rp(compData[i]) + ' · ' + Math.round((compData[i] / compTotal) * 100) + '%</span></div>'
+  ).join('');
+
   // ---------- Tema ----------
   function applyTheme() {
-    [lineChart, areaChart].forEach((ch) => {
-      ch.options.scales.x.ticks.color = ink().tick;
-      ch.options.scales.y.ticks.color = ink().tick;
-      ch.options.scales.y.grid.color = ink().grid;
+    [lineChart, areaChart, donutChart].forEach((ch) => {
+      if (ch.options.scales && ch.options.scales.x) {
+        ch.options.scales.x.ticks.color = ink().tick;
+        ch.options.scales.y.ticks.color = ink().tick;
+        ch.options.scales.y.grid.color = ink().grid;
+      }
       ch.options.plugins.tooltip = { ...ch.options.plugins.tooltip, ...baseTooltip() };
+      if (ch.config.type === 'doughnut') ch.data.datasets[0].borderColor = isDark() ? '#0f172a' : '#ffffff';
       ch.update('none');
     });
   }

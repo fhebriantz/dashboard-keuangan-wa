@@ -1,7 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { wibMonthStartISO, formatTanggalWIB, namaBulanWIB } from '@/lib/time'
-import { monthlyData } from '@/lib/report-data'
+import { monthlyData, buildChartData } from '@/lib/report-data'
 import { emojiOf } from '@/lib/category'
+import ReportCharts from './ReportCharts'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,6 +41,7 @@ export default async function LaporanPage({
   const data = await monthlyData(supabase, id, wibMonthStartISO())
   const { pemasukan, pengeluaran, saldo, categories, rows, totalBudget } = data
   const sisaTotal = totalBudget != null ? totalBudget - pengeluaran : null
+  const chart = buildChartData(rows)
 
   return (
     <main style={wrap}>
@@ -74,6 +76,9 @@ export default async function LaporanPage({
           </div>
         )}
       </div>
+
+      {/* ---------- Grafik (donut, tren harian, kondisi amplop) ---------- */}
+      <ReportCharts chart={chart} />
 
       {/* ---------- Amplop per kategori ---------- */}
       {categories.length > 0 && (

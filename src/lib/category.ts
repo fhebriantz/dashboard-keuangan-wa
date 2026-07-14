@@ -76,6 +76,23 @@ export function emojiOf(kategori: string): string {
   return CATEGORY_EMOJI[kategori] ?? '📦'
 }
 
+// Warna per kategori (dari palet dataviz tervalidasi) — stabil di semua chart.
+export const CATEGORY_COLOR: Record<string, string> = {
+  Makan: '#1baf7a',
+  Transport: '#eb6834',
+  Tagihan: '#2a78d6',
+  Belanja: '#eda100',
+  Kesehatan: '#e34948',
+  Hiburan: '#e87ba4',
+  Anak: '#4a3aa7',
+  Tabungan: '#008300',
+  Lainnya: '#94a3b8',
+}
+
+export function colorOf(kategori: string): string {
+  return CATEGORY_COLOR[kategori] ?? '#94a3b8'
+}
+
 /**
  * Cocokkan sebuah balasan pelanggan ke kategori yang dikenal (tanpa angka).
  * Dipakai saat bot bertanya "masuk kategori apa?" lalu user membalas 1 kata.
