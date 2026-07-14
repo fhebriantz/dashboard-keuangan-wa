@@ -38,12 +38,22 @@ function modelChain(): string[] {
 }
 
 // Banyak API key (akun Google berbeda) — dipisah koma di GEMINI_API_KEYS.
-// Kalau satu key kena limit harian, otomatis dicoba key berikutnya.
 function apiKeys(): string[] {
   const multi = process.env.GEMINI_API_KEYS
   if (multi) return multi.split(',').map((s) => s.trim()).filter(Boolean)
   const single = process.env.GEMINI_API_KEY?.trim()
   return single ? [single] : []
+}
+
+// Acak urutan (Fisher–Yates) agar beban tersebar merata antar key —
+// tidak selalu memukul key pertama sampai habis (mengurangi risiko banned).
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
 }
 
 function toEntry(text: string): ParsedEntry | null {
@@ -115,8 +125,9 @@ export async function aiParseEntry(message: string): Promise<ParsedEntry | null>
   if (keys.length === 0) return null
   const models = modelChain()
 
-  // Coba tiap key × tiap model. Limit/error -> lanjut kombinasi berikutnya.
-  for (const key of keys) {
+  // Urutan key diacak tiap panggilan -> beban merata antar akun.
+  // Model tetap urut prioritas (kuota harian terbesar dulu).
+  for (const key of shuffle(keys)) {
     for (const model of models) {
       const { retry, entry } = await callModel(model, key, message)
       if (entry) return entry // berhasil
