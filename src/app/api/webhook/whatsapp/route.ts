@@ -345,6 +345,9 @@ export async function POST(req: NextRequest) {
         ? `📊 Sisa amplop ${kat}: ${rupiah(sisa)}`
         : `⚠️ Amplop ${kat} lewat ${rupiah(-sisa)}`,
     )
+  } else if (kat !== 'Lainnya') {
+    // Beri tahu bahwa kategori ini belum punya amplop (tak mengurangi amplop).
+    lines.push(`ℹ️ Belum ada amplop ${kat} — set: anggaran ${kat.toLowerCase()} <nominal>`)
   }
 
   return respond(lines.join('\n'))
