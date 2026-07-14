@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/phone'
 import { parseEntry } from '@/lib/parse-entry'
+import { aiParseEntry } from '@/lib/ai/parse'
 import { normalizeInbound } from '@/lib/whatsapp/inbound'
 import { sendReply } from '@/lib/whatsapp/outbound'
 import {
@@ -239,7 +240,10 @@ export async function POST(req: NextRequest) {
   // -----------------------------------------------------------
   // 6) Kalau bukan perintah, catat sebagai pemasukan/pengeluaran.
   // -----------------------------------------------------------
-  const entry = parseEntry(inbound!.message)
+  // Rule-based dulu (gratis & instan). Kalau gagal, baru coba AI cadangan
+  // (kalau diaktifkan). Kalau AI limit/error, aiParseEntry balik null -> tetap
+  // jatuh ke pesan "format tidak dikenali" di bawah.
+  const entry = parseEntry(inbound!.message) ?? (await aiParseEntry(inbound!.message))
   if (!entry) {
     return respond(
       'Format tidak dikenali. Contoh:\n' +
