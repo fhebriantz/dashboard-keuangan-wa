@@ -145,9 +145,12 @@ export default function PanduanPage() {
               <div style={{ color: 'var(--muted)', fontSize: 13, margin: '4px 0 8px' }}>{u.tagline}</div>
               <div style={chatBox}>
                 {u.contoh.map((c, i) => (
-                  <div key={i} style={{ marginBottom: 2 }}>
-                    <span style={{ color: 'var(--accent)', fontWeight: 700 }}>Kamu › </span>
-                    {c}
+                  <div key={i} style={{ marginBottom: 6 }}>
+                    <div>
+                      <span style={{ color: 'var(--accent)', fontWeight: 700 }}>Kamu › </span>
+                      {c.ketik}
+                    </div>
+                    <div style={{ color: 'var(--muted)', paddingLeft: 14 }}>↳ {c.balas}</div>
                   </div>
                 ))}
               </div>

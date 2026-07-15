@@ -119,9 +119,12 @@ export default async function LandingPage() {
               <div style={{ color: 'var(--muted)', fontSize: 14, margin: '8px 0 10px' }}>{u.tagline}</div>
               <div style={exampleBox}>
                 {u.contoh.map((c, i) => (
-                  <div key={i} style={{ padding: '1px 0' }}>
-                    <span style={{ color: 'var(--accent)' }}>› </span>
-                    {c}
+                  <div key={i} style={{ padding: '3px 0' }}>
+                    <div>
+                      <span style={{ color: 'var(--accent)' }}>Kamu › </span>
+                      {c.ketik}
+                    </div>
+                    <div style={{ color: 'var(--muted)', paddingLeft: 12 }}>↳ {c.balas}</div>
                   </div>
                 ))}
               </div>
