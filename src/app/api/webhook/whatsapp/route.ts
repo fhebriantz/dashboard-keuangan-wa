@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/phone'
-import { parseEntry, type ParsedEntry } from '@/lib/parse-entry'
+import { parseEntry, parseBulk, type ParsedEntry } from '@/lib/parse-entry'
 import { aiInterpret } from '@/lib/ai/interpret'
 import { aiReadReceipt } from '@/lib/ai/receipt'
 import {
@@ -171,6 +171,12 @@ export async function POST(req: NextRequest) {
   }
 
   // -----------------------------------------------------------
+  // 4c) Banyak transaksi sekaligus (satu per baris)? Catat massal.
+  // -----------------------------------------------------------
+  const bulk = parseBulk(inbound!.message)
+  if (bulk) return recordBulk(bulk)
+
+  // -----------------------------------------------------------
   // 5) Perintah bot (help/total/laporan/hari/hapus)? Tangani lebih dulu.
   // -----------------------------------------------------------
   const cmd = detectCommand(inbound!.message)
@@ -330,4 +336,53 @@ export async function POST(req: NextRequest) {
 
     return respond(lines.join('\n'))
   } // akhir recordAndRespond
+
+  // --- pencatatan massal (banyak baris) ---
+  async function recordBulk(bulk: { entries: ParsedEntry[]; failed: string[] }) {
+    const fam = family!
+    const usr = user!
+    const rows: Record<string, unknown>[] = []
+    const display: { tipe: string; nama: string; nominal: number; kategori: string | null }[] = []
+
+    for (const e of bulk.entries) {
+      let kategori: string | null = e.tipe === 'pemasukan' ? null : e.kategori ?? 'Lainnya'
+      if (e.tipe === 'pengeluaran' && kategori === 'Lainnya' && !e.kategoriManual) {
+        const remembered = await lookupCategoryMemory(supabase, fam.id, e.nama)
+        if (remembered) kategori = remembered
+      }
+      rows.push({
+        family_id: fam.id,
+        user_id: usr.id,
+        nama_pengeluaran: e.nama,
+        nominal: e.nominal,
+        tipe: e.tipe,
+        kategori,
+      })
+      display.push({ tipe: e.tipe, nama: e.nama, nominal: e.nominal, kategori })
+      if (e.tipe === 'pengeluaran' && e.kategoriManual && e.kategori) {
+        await learnCategoryMemory(supabase, fam.id, e.nama, e.kategori)
+      }
+    }
+
+    const { error } = await supabase.from('transactions').insert(rows)
+    if (error) {
+      console.error('[webhook] bulk insert error:', error.message)
+      return respond('Gagal menyimpan catatan massal. Coba lagi sebentar.')
+    }
+
+    const totalOut = display.filter((d) => d.tipe === 'pengeluaran').reduce((s, d) => s + d.nominal, 0)
+    const totalIn = display.filter((d) => d.tipe === 'pemasukan').reduce((s, d) => s + d.nominal, 0)
+    const lines = [`✅ ${rows.length} transaksi tercatat untuk *${fam.nama_keluarga}*:`]
+    for (const d of display) {
+      const ic = d.tipe === 'pemasukan' ? '💵' : emojiOf(d.kategori ?? 'Lainnya')
+      lines.push(`${ic} ${d.nama} · ${rupiah(d.nominal)}`)
+    }
+    lines.push('')
+    if (totalOut > 0) lines.push(`💰 Pengeluaran: ${rupiah(totalOut)}`)
+    if (totalIn > 0) lines.push(`💵 Pemasukan: ${rupiah(totalIn)}`)
+    if (bulk.failed.length) {
+      lines.push('', `⚠️ ${bulk.failed.length} baris tak terbaca: ${bulk.failed.join(', ')}`)
+    }
+    return respond(lines.join('\n'))
+  } // akhir recordBulk
 }

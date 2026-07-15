@@ -59,3 +59,24 @@ export function parseEntry(message: string): ParsedEntry | null {
     kategoriManual: kategoriOverride != null,
   }
 }
+
+/**
+ * Banyak transaksi dalam satu pesan (satu per baris), boleh campur
+ * pemasukan/pengeluaran. Aktif hanya jika >= 2 baris valid.
+ *
+ *   "gojek 11rb\ngojek 12000\ndimsum 16rb\nmasuk 56rb"
+ */
+export function parseBulk(
+  message: string,
+): { entries: ParsedEntry[]; failed: string[] } | null {
+  const lines = (message ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
+  if (lines.length < 2) return null
+  const entries: ParsedEntry[] = []
+  const failed: string[] = []
+  for (const line of lines) {
+    const e = parseEntry(line)
+    if (e) entries.push(e)
+    else failed.push(line)
+  }
+  return entries.length >= 2 ? { entries, failed } : null
+}

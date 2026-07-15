@@ -62,6 +62,20 @@ Bot balas:
 Tidak perlu format khusus. Tulis apa adanya. Salah ketik ringan pun tetap
 terbaca (mis. `bensn` tetap masuk Transport).
 
+### Catat banyak sekaligus (satu per baris) 📝
+Punya beberapa transaksi? Kirim **satu pesan, satu baris per transaksi** — boleh
+campur pemasukan & pengeluaran:
+```
+gojek 11rb
+gojek 12000
+dimsum 16rb
+masuk 56rb
+cukur 80rb
+bayar utang 50rb
+```
+Bot mencatat semuanya sekaligus dan menampilkan ringkasan total. (Kategori
+ditebak otomatis; kalau ada yang meleset, betulkan lain kali dengan `#kategori`.)
+
 ---
 
 ## 3. Mencatat pemasukan
