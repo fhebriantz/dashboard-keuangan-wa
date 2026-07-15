@@ -12,6 +12,7 @@ const SLOTS = 30
 export async function submitRegistration(formData: FormData) {
   const nama_keluarga = String(formData.get('nama_keluarga') ?? '').trim()
   const paket = String(formData.get('paket') ?? '')
+  const mode = String(formData.get('mode') ?? 'keluarga') === 'komunitas' ? 'komunitas' : 'keluarga'
 
   const err = (m: string) => redirect('/daftar?err=' + encodeURIComponent(m))
 
@@ -35,7 +36,7 @@ export async function submitRegistration(formData: FormData) {
 
   const { data, error } = await supabase
     .from('registrations')
-    .insert({ nama_keluarga, paket, members })
+    .insert({ nama_keluarga, paket, members, mode })
     .select('id')
     .single()
   if (error || !data) err(error?.message ?? 'Gagal menyimpan pendaftaran')

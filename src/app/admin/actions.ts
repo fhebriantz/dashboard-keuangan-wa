@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/phone'
 import { getPackage } from '@/lib/pricing'
+import { makeSlug } from '@/lib/slug'
 import {
   verifyPassword,
   setSession,
@@ -92,9 +93,17 @@ export async function approveRegistration(formData: FormData) {
   const bulan = pkg?.bulan ?? 1
   const expired = new Date(Date.now() + bulan * 30 * 86_400_000).toISOString()
 
+  const mode = reg.mode === 'komunitas' ? 'komunitas' : 'keluarga'
   const { data: fam, error: famErr } = await supabase
     .from('families')
-    .insert({ nama_keluarga: reg.nama_keluarga, status_langganan: 'active', expired_at: expired })
+    .insert({
+      nama_keluarga: reg.nama_keluarga,
+      status_langganan: 'active',
+      expired_at: expired,
+      mode,
+      // Komunitas langsung dapat slug laporan publik.
+      public_slug: mode === 'komunitas' ? makeSlug(reg.nama_keluarga) : null,
+    })
     .select('id')
     .single()
   if (famErr || !fam)
@@ -200,6 +209,85 @@ export async function rejectRegistration(formData: FormData) {
     .eq('id', id)
   revalidatePath('/admin')
   redirect('/admin?ok=' + encodeURIComponent('Pendaftaran ditolak'))
+}
+
+// ---------- Kas Komunitas: roster & laporan publik ----------
+
+export async function addIuranAnggota(formData: FormData) {
+  await guard()
+  const family_id = String(formData.get('family_id') ?? '')
+  const nama = String(formData.get('nama') ?? '').trim()
+  const waRaw = String(formData.get('nomor_wa') ?? '').trim()
+  const nominalRaw = String(formData.get('nominal_default') ?? '').trim()
+  if (!family_id) redirect('/admin?err=' + encodeURIComponent('Pilih komunitas dulu'))
+  if (!nama) redirect('/admin?err=' + encodeURIComponent('Nama anggota wajib diisi'))
+
+  const nomor_wa = waRaw ? normalizePhone(waRaw) : null
+  if (waRaw && !nomor_wa)
+    redirect('/admin?err=' + encodeURIComponent('Nomor WA tidak valid (format 08.../62...)'))
+  const nominal_default = nominalRaw ? Number(nominalRaw) : null
+
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('iuran_anggota').insert({
+    family_id,
+    nama,
+    nomor_wa,
+    nominal_default: Number.isFinite(nominal_default as number) ? nominal_default : null,
+  })
+  if (error) redirect('/admin?err=' + encodeURIComponent(error.message))
+
+  revalidatePath('/admin')
+  redirect('/admin?ok=' + encodeURIComponent(`Anggota ${nama} ditambahkan`))
+}
+
+export async function deleteIuranAnggota(formData: FormData) {
+  await guard()
+  const id = String(formData.get('id') ?? '')
+  const supabase = createAdminClient()
+  await supabase.from('iuran_anggota').delete().eq('id', id)
+  revalidatePath('/admin')
+  redirect('/admin?ok=' + encodeURIComponent('Anggota dihapus'))
+}
+
+export async function setIuranNominal(formData: FormData) {
+  await guard()
+  const family_id = String(formData.get('family_id') ?? '')
+  const nominal = Number(formData.get('iuran_nominal') ?? 0)
+  const supabase = createAdminClient()
+  const { error } = await supabase
+    .from('families')
+    .update({ iuran_nominal: Number.isFinite(nominal) && nominal > 0 ? nominal : null })
+    .eq('id', family_id)
+  if (error) redirect('/admin?err=' + encodeURIComponent(error.message))
+  revalidatePath('/admin')
+  redirect('/admin?ok=' + encodeURIComponent('Iuran default disimpan'))
+}
+
+export async function toggleLaporanPublik(formData: FormData) {
+  await guard()
+  const id = String(formData.get('id') ?? '')
+  const current = String(formData.get('current') ?? '') === 'true'
+  const hasSlug = String(formData.get('has_slug') ?? '') === 'true'
+  const nama = String(formData.get('nama') ?? 'kas')
+
+  const supabase = createAdminClient()
+  const patch: Record<string, unknown> = { laporan_publik: !current }
+  if (!hasSlug) patch.public_slug = makeSlug(nama) // pastikan ada slug
+  const { error } = await supabase.from('families').update(patch).eq('id', id)
+  if (error) redirect('/admin?err=' + encodeURIComponent(error.message))
+  revalidatePath('/admin')
+  redirect('/admin?ok=' + encodeURIComponent('Status laporan publik diperbarui'))
+}
+
+export async function rotatePublicSlug(formData: FormData) {
+  await guard()
+  const id = String(formData.get('id') ?? '')
+  const nama = String(formData.get('nama') ?? 'kas')
+  const supabase = createAdminClient()
+  const { error } = await supabase.from('families').update({ public_slug: makeSlug(nama) }).eq('id', id)
+  if (error) redirect('/admin?err=' + encodeURIComponent(error.message))
+  revalidatePath('/admin')
+  redirect('/admin?ok=' + encodeURIComponent('Link laporan diperbarui (yang lama tak berlaku)'))
 }
 
 export async function toggleFamilyStatus(formData: FormData) {

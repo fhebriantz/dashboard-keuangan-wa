@@ -15,8 +15,14 @@ export default function RegisterForm({
   config: PricingConfig
   packages: Package[]
 }) {
+  const [mode, setMode] = useState<'keluarga' | 'komunitas'>('keluarga')
   const [members, setMembers] = useState<Member[]>([{ nama: '', wa: '' }])
   const [paket, setPaket] = useState(packages[0]?.id ?? '')
+
+  const komunitas = mode === 'komunitas'
+  const t = komunitas
+    ? { nama: 'Nama komunitas / grup *', namaPh: 'cth: RT 05 Melati / Arisan Mawar', anggota: 'Pengurus (yang chat ke bot) *', anggotaHint: 'Bendahara/pengurus yang mencatat lewat WhatsApp. Warga lain diisi belakangan.' }
+    : { nama: 'Nama grup / keluarga *', namaPh: 'cth: Keluarga Budi', anggota: 'Anggota *', anggotaHint: 'Isi minimal satu. Nomor inilah yang dipakai chat ke bot.' }
 
   const bulan = packages.find((p) => p.id === paket)?.bulan ?? 1
   // Hitung hanya anggota yang terisi (nama atau nomor) — sama seperti logika server.
@@ -31,15 +37,41 @@ export default function RegisterForm({
 
   return (
     <form action={submitRegistration} style={{ display: 'grid', gap: 16, marginTop: 12 }}>
+      <input type="hidden" name="mode" value={mode} />
+
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 6 }}>Jenis penggunaan *</div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {([
+            { v: 'keluarga', label: '👨‍👩‍👧 Keluarga' },
+            { v: 'komunitas', label: '🏘️ Komunitas / Kas' },
+          ] as const).map((o) => (
+            <button
+              key={o.v}
+              type="button"
+              onClick={() => setMode(o.v)}
+              style={{ ...segBtn, ...(mode === o.v ? segBtnActive : null) }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--muted)', margin: '6px 0 0' }}>
+          {komunitas
+            ? 'Untuk RT/RW, arisan, masjid, kas kelas — catat iuran & pengeluaran kas.'
+            : 'Untuk pasangan/keluarga — catat pemasukan & pengeluaran rumah tangga.'}
+        </p>
+      </div>
+
       <label style={lab}>
-        Nama grup / keluarga *
-        <input name="nama_keluarga" required placeholder="cth: Keluarga Budi" style={inp} />
+        {t.nama}
+        <input name="nama_keluarga" required placeholder={t.namaPh} style={inp} />
       </label>
 
       <div>
-        <div style={{ fontWeight: 600, marginBottom: 2 }}>Anggota *</div>
+        <div style={{ fontWeight: 600, marginBottom: 2 }}>{t.anggota}</div>
         <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 10px' }}>
-          Isi minimal satu. Nomor inilah yang dipakai chat ke bot.
+          {t.anggotaHint}
         </p>
         <div style={{ display: 'grid', gap: 10 }}>
           {members.map((m, i) => (
@@ -111,6 +143,22 @@ export default function RegisterForm({
 }
 
 /* ---------- styles ---------- */
+const segBtn: React.CSSProperties = {
+  flex: 1,
+  padding: '10px 8px',
+  border: '1px solid var(--border)',
+  borderRadius: 10,
+  background: 'var(--surface)',
+  color: 'var(--text)',
+  fontSize: 14,
+  fontWeight: 600,
+  cursor: 'pointer',
+}
+const segBtnActive: React.CSSProperties = {
+  borderColor: 'var(--accent)',
+  background: 'var(--accent)',
+  color: '#fff',
+}
 const lab: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 14, fontWeight: 500 }
 const inp: React.CSSProperties = {
   padding: '10px 12px',

@@ -10,6 +10,11 @@ import {
   updatePricing,
   addPackage,
   deletePackage,
+  addIuranAnggota,
+  deleteIuranAnggota,
+  setIuranNominal,
+  toggleLaporanPublik,
+  rotatePublicSlug,
   logout,
 } from './actions'
 import { getPricingConfig, getPackages, hitungTotal, rupiah as rp } from '@/lib/pricing'
@@ -21,6 +26,17 @@ type Family = {
   nama_keluarga: string
   status_langganan: string
   expired_at: string | null
+  mode?: string | null
+  iuran_nominal?: number | null
+  laporan_publik?: boolean | null
+  public_slug?: string | null
+}
+type Anggota = {
+  id: string
+  family_id: string
+  nama: string
+  nomor_wa: string | null
+  nominal_default: number | null
 }
 type User = {
   id: string
@@ -39,10 +55,10 @@ export default async function AdminPage({
   const sp = await searchParams
 
   const supabase = createAdminClient()
-  const [{ data: families }, { data: users }, { data: regs }] = await Promise.all([
+  const [{ data: families }, { data: users }, { data: regs }, { data: anggota }] = await Promise.all([
     supabase
       .from('families')
-      .select('id, nama_keluarga, status_langganan, expired_at')
+      .select('id, nama_keluarga, status_langganan, expired_at, mode, iuran_nominal, laporan_publik, public_slug')
       .order('created_at', { ascending: false }),
     supabase
       .from('users')
@@ -53,6 +69,11 @@ export default async function AdminPage({
       .select('id, nama_keluarga, members, paket, created_at')
       .eq('status', 'pending')
       .order('created_at', { ascending: false }),
+    supabase
+      .from('iuran_anggota')
+      .select('id, family_id, nama, nomor_wa, nominal_default')
+      .eq('aktif', true)
+      .order('nama'),
   ])
 
   const [config, packages] = await Promise.all([
@@ -62,6 +83,9 @@ export default async function AdminPage({
 
   const fam = (families ?? []) as Family[]
   const usr = (users ?? []) as User[]
+  const roster = (anggota ?? []) as Anggota[]
+  const komunitas = fam.filter((f) => f.mode === 'komunitas')
+  const appBase = process.env.APP_URL?.replace(/\/$/, '') ?? ''
   const pending = (regs ?? []) as Array<{
     id: string
     nama_keluarga: string
@@ -239,6 +263,108 @@ export default async function AdminPage({
           Nomor boleh ditulis <code>0812...</code> atau <code>62812...</code> — otomatis dirapikan.
         </p>
       </section>
+
+      {/* ---------- Kas Komunitas ---------- */}
+      {komunitas.length > 0 && (
+        <section style={{ ...card, borderColor: '#0ea5e9' }}>
+          <h2 style={h2}>🏘️ Kas Komunitas ({komunitas.length})</h2>
+          <p style={{ fontSize: 13, color: '#71717a', marginTop: 0 }}>
+            Kelola roster warga, iuran default, dan link laporan publik tiap komunitas.
+          </p>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {komunitas.map((f) => {
+              const list = roster.filter((a) => a.family_id === f.id)
+              const publik = f.laporan_publik !== false
+              const link = f.public_slug && appBase ? `${appBase}/kas/${f.public_slug}` : null
+              return (
+                <div key={f.id} style={{ ...card, marginTop: 0, background: '#f8fafc' }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{f.nama_keluarga}</div>
+
+                  {/* Iuran default + laporan publik */}
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 10 }}>
+                    <form action={setIuranNominal} style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+                      <input type="hidden" name="family_id" value={f.id} />
+                      <label style={{ ...lab, fontSize: 12 }}>
+                        Iuran default / periode
+                        <input
+                          name="iuran_nominal"
+                          type="number"
+                          defaultValue={f.iuran_nominal ?? ''}
+                          placeholder="50000"
+                          style={{ ...inp, width: 130 }}
+                        />
+                      </label>
+                      <button style={btn}>Simpan</button>
+                    </form>
+                  </div>
+
+                  {/* Link laporan publik */}
+                  <div style={{ marginTop: 12, fontSize: 13 }}>
+                    <div style={{ color: '#52525b', marginBottom: 4 }}>
+                      Laporan publik: <b>{publik ? 'AKTIF' : 'ditutup'}</b>
+                    </div>
+                    {link ? (
+                      <a href={link} target="_blank" style={{ color: '#0284c7', wordBreak: 'break-all' }}>
+                        {link}
+                      </a>
+                    ) : (
+                      <span style={{ color: '#71717a' }}>(belum ada link — aktifkan di bawah)</span>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <form action={toggleLaporanPublik}>
+                        <input type="hidden" name="id" value={f.id} />
+                        <input type="hidden" name="current" value={String(publik)} />
+                        <input type="hidden" name="has_slug" value={String(!!f.public_slug)} />
+                        <input type="hidden" name="nama" value={f.nama_keluarga} />
+                        <button style={ghostBtn}>{publik ? 'Tutup laporan' : 'Buka laporan'}</button>
+                      </form>
+                      <form action={rotatePublicSlug}>
+                        <input type="hidden" name="id" value={f.id} />
+                        <input type="hidden" name="nama" value={f.nama_keluarga} />
+                        <button style={ghostBtn}>Ganti link</button>
+                      </form>
+                    </div>
+                  </div>
+
+                  {/* Roster */}
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>
+                      Anggota ({list.length})
+                    </div>
+                    {list.length > 0 && (
+                      <div style={{ display: 'grid', gap: 4, marginBottom: 8 }}>
+                        {list.map((a) => (
+                          <div
+                            key={a.id}
+                            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 14 }}
+                          >
+                            <span>
+                              {a.nama}
+                              {a.nomor_wa ? <span style={{ color: '#71717a' }}> · {a.nomor_wa}</span> : null}
+                              {a.nominal_default ? <span style={{ color: '#71717a' }}> · {rp(a.nominal_default)}</span> : null}
+                            </span>
+                            <form action={deleteIuranAnggota}>
+                              <input type="hidden" name="id" value={a.id} />
+                              <button style={ghostBtn}>Hapus</button>
+                            </form>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <form action={addIuranAnggota} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <input type="hidden" name="family_id" value={f.id} />
+                      <input name="nama" required placeholder="Nama" style={{ ...inp, flex: 1, minWidth: 110 }} />
+                      <input name="nomor_wa" placeholder="08.. (opsional)" style={{ ...inp, flex: 1, minWidth: 110 }} />
+                      <input name="nominal_default" type="number" placeholder="nominal" style={{ ...inp, width: 100 }} />
+                      <button style={btn}>Tambah</button>
+                    </form>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ---------- Daftar ---------- */}
       <section style={card}>

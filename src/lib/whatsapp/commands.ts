@@ -142,8 +142,25 @@ function reportLink(familyId: string): string | null {
   return base ? `${base}/laporan/${familyId}` : null
 }
 
-type Family = { id: string; nama_keluarga: string }
+type Family = { id: string; nama_keluarga: string; mode?: string | null }
 type User = { id: string; nama: string }
+
+const HELP_KOMUNITAS =
+  '📌 *Menu Kas Komunitas*\n\n' +
+  'Catat *iuran masuk*:\n' +
+  '• Budi bayar\n' +
+  '• iuran Budi 50rb\n\n' +
+  'Kelola *anggota & iuran*:\n' +
+  '• tambah anggota Budi 0812xxx\n' +
+  '• iuran bulanan 50rb (set default)\n' +
+  '• anggota — lihat roster\n' +
+  '• belum bayar / sudah bayar\n\n' +
+  'Catat *pengeluaran kas* — ketik langsung:\n' +
+  '• Beli galon 20rb\n\n' +
+  'Perintah lain:\n' +
+  '• *total* — saldo kas + ringkasan\n' +
+  '• *laporan* — rekap lengkap bulan ini\n' +
+  '• *hapus* — batalkan catatan terakhir'
 
 const HELP_TEXT =
   '📌 *Menu Bot Keuangan*\n\n' +
@@ -192,7 +209,7 @@ export async function handleCommand(
 ): Promise<string> {
   switch (type) {
     case 'help':
-      return HELP_TEXT + panduanLink()
+      return (family.mode === 'komunitas' ? HELP_KOMUNITAS : HELP_TEXT) + panduanLink()
 
     case 'total': {
       const data = await monthlyData(supabase, family.id, wibMonthStartISO())

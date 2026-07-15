@@ -25,6 +25,7 @@ import {
 } from '@/lib/whatsapp/commands'
 import { emojiOf, asCategory } from '@/lib/category'
 import { lookupCategoryMemory, learnCategoryMemory } from '@/lib/category-memory'
+import { detectIuran, handleIuran } from '@/lib/iuran-actions'
 import { wibMonthStartISO } from '@/lib/time'
 
 // service_role + supabase-js butuh runtime Node (bukan Edge murni).
@@ -88,7 +89,7 @@ export async function POST(req: NextRequest) {
   const { data: user, error: userErr } = await supabase
     .from('users')
     .select(
-      'id, nama, family_id, pending_tx_id, pending_at, families ( id, nama_keluarga, status_langganan, expired_at )',
+      'id, nama, family_id, pending_tx_id, pending_at, families ( id, nama_keluarga, status_langganan, expired_at, mode, iuran_nominal, public_slug, laporan_publik )',
     )
     .eq('nomor_wa', sender)
     .maybeSingle()
@@ -237,6 +238,18 @@ export async function POST(req: NextRequest) {
   const delCmd = detectDeleteBudget(inbound!.message)
   if (delCmd) {
     return respond(await applyDeleteBudget(supabase, family.id, delCmd.kategori))
+  }
+
+  // -----------------------------------------------------------
+  // 5b) Perintah kas komunitas (iuran) — hanya untuk mode 'komunitas'.
+  //     Ditaruh sebelum pencatatan transaksi agar "budi bayar" /
+  //     "iuran budi 50rb" tidak salah dianggap pengeluaran.
+  // -----------------------------------------------------------
+  if (family.mode === 'komunitas') {
+    const iuranCmd = detectIuran(inbound!.message)
+    if (iuranCmd) {
+      return respond(await handleIuran(supabase, family, user.id, iuranCmd))
+    }
   }
 
   // -----------------------------------------------------------
