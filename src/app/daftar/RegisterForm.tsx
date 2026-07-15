@@ -58,8 +58,8 @@ export default function RegisterForm({
         </div>
         <p style={{ fontSize: 12, color: 'var(--muted)', margin: '6px 0 0' }}>
           {komunitas
-            ? 'Untuk RT/RW, arisan, masjid, kas kelas — catat iuran & pengeluaran kas.'
-            : 'Untuk pasangan/keluarga — catat pemasukan & pengeluaran rumah tangga.'}
+            ? 'Untuk RT/RW, paguyuban, arisan, kas kelas/sekolah, rumah ibadah, kegiatan sosial — kelola iuran warga & laporan transparan yang bisa dibuka semua anggota.'
+            : 'Untuk keluarga, pribadi, atau usaha kecil (UMKM) — catat pemasukan & pengeluaran, atur amplop per kategori.'}
         </p>
       </div>
 

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPricingConfig, getPackages, rupiah, hitungTotal, type PricingConfig, type Package } from '@/lib/pricing'
+import { USE_CASES } from '@/lib/use-cases'
 import MarketingNav from './MarketingNav'
 
 export const dynamic = 'force-dynamic'
@@ -59,8 +60,9 @@ export default async function LandingPage() {
             </span>
           </h1>
           <p style={{ fontSize: 18, color: 'var(--muted)', maxWidth: 560, margin: 0 }}>
-            Tanpa install aplikasi. Ketik pengeluaranmu ke chat, bot mencatat, mengategorikan,
-            dan menyusun laporan lengkap — untuk kamu dan pasangan.
+            Tanpa install aplikasi. Ketik ke chat, bot mencatat, mengategorikan, dan menyusun
+            laporan otomatis — cocok untuk keluarga, RT/RW, komunitas, sekolah, rumah ibadah,
+            hingga usaha kecil.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 26, flexWrap: 'wrap' }}>
             <Link href="/daftar" style={btnPrimary}>Daftar Sekarang</Link>
@@ -95,6 +97,34 @@ export default async function LandingPage() {
               <div style={{ fontSize: 28 }}>{f.icon}</div>
               <div style={{ fontWeight: 700, marginTop: 10 }}>{f.title}</div>
               <div style={{ color: 'var(--muted)', fontSize: 14, marginTop: 6 }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Cocok untuk siapa saja */}
+      <section id="cocok-untuk" style={{ ...container, padding: '30px 20px' }}>
+        <h2 style={sectionTitle}>Cocok untuk siapa saja</h2>
+        <p style={sectionSub}>Satu bot, banyak kebutuhan — dari kas keluarga sampai kas komunitas & usaha.</p>
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', marginTop: 28 }}>
+          {USE_CASES.map((u) => (
+            <div key={u.title} style={featureCard}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 24 }}>{u.icon}</span>
+                <span style={{ fontWeight: 700 }}>{u.title}</span>
+              </div>
+              <span style={u.mode === 'komunitas' ? tagKomunitas : tagKeluarga}>
+                {u.mode === 'komunitas' ? 'Mode Komunitas' : 'Mode Keluarga'}
+              </span>
+              <div style={{ color: 'var(--muted)', fontSize: 14, margin: '8px 0 10px' }}>{u.tagline}</div>
+              <div style={exampleBox}>
+                {u.contoh.map((c, i) => (
+                  <div key={i} style={{ padding: '1px 0' }}>
+                    <span style={{ color: 'var(--accent)' }}>› </span>
+                    {c}
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
@@ -244,6 +274,25 @@ const featureCard: React.CSSProperties = {
   border: '1px solid var(--border)',
   borderRadius: 16,
   padding: 20,
+}
+const tagBase: React.CSSProperties = {
+  display: 'inline-block',
+  marginTop: 10,
+  padding: '2px 9px',
+  borderRadius: 999,
+  fontSize: 11.5,
+  fontWeight: 700,
+}
+const tagKomunitas: React.CSSProperties = { ...tagBase, background: '#e0f2fe', color: '#075985' }
+const tagKeluarga: React.CSSProperties = { ...tagBase, background: '#dcfce7', color: '#166534' }
+const exampleBox: React.CSSProperties = {
+  background: 'var(--soft)',
+  border: '1px solid var(--border)',
+  borderRadius: 10,
+  padding: '10px 12px',
+  fontFamily: 'ui-monospace, monospace',
+  fontSize: 12.5,
+  lineHeight: 1.55,
 }
 const stepNum: React.CSSProperties = {
   display: 'grid',

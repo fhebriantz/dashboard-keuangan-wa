@@ -1,4 +1,5 @@
 import MarketingNav from '../MarketingNav'
+import { USE_CASES } from '@/lib/use-cases'
 
 export const dynamic = 'force-static'
 
@@ -127,6 +128,34 @@ export default function PanduanPage() {
         <p style={muted}>Perintah boleh huruf besar/kecil, dengan atau tanpa garis miring.</p>
       </Section>
 
+      <Section title="🧩 Contoh sesuai kebutuhan">
+        <p style={p}>
+          Mesinnya sama, tinggal pilih mode saat daftar. Berikut contoh perintah untuk tiap kebutuhan:
+        </p>
+        <div style={{ display: 'grid', gap: 14 }}>
+          {USE_CASES.map((u) => (
+            <div key={u.title} style={useCard}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 20 }}>{u.icon}</span>
+                <b>{u.title}</b>
+                <span style={u.mode === 'komunitas' ? tagKomunitas : tagKeluarga}>
+                  {u.mode === 'komunitas' ? 'Komunitas' : 'Keluarga'}
+                </span>
+              </div>
+              <div style={{ color: 'var(--muted)', fontSize: 13, margin: '4px 0 8px' }}>{u.tagline}</div>
+              <div style={chatBox}>
+                {u.contoh.map((c, i) => (
+                  <div key={i} style={{ marginBottom: 2 }}>
+                    <span style={{ color: 'var(--accent)', fontWeight: 700 }}>Kamu › </span>
+                    {c}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
       <Section title="6. Tanya jawab singkat">
         <p style={p}><b>Bot tak membalas?</b> Pastikan nomormu terdaftar & pesan ada angkanya. Ketik <code style={code}>bantuan</code>.</p>
         <p style={p}><b>Sisa amplop vs saldo?</b> Sisa amplop = jatah rencana kategori. Saldo = uang riil (pemasukan − pengeluaran); minus = nombok/pinjam.</p>
@@ -190,5 +219,19 @@ const callout: React.CSSProperties = {
   marginTop: 12,
   fontSize: 14,
 }
+const useCard: React.CSSProperties = {
+  border: '1px solid var(--border)',
+  borderRadius: 12,
+  padding: 14,
+  background: 'var(--surface)',
+}
+const tagBase: React.CSSProperties = {
+  padding: '1px 8px',
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 700,
+}
+const tagKomunitas: React.CSSProperties = { ...tagBase, background: '#e0f2fe', color: '#075985' }
+const tagKeluarga: React.CSSProperties = { ...tagBase, background: '#dcfce7', color: '#166534' }
 const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 14 }
 const td: React.CSSProperties = { padding: '8px 8px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }

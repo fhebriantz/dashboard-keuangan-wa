@@ -89,7 +89,7 @@ export default async function KasPublikPage({
 
       <div style={{ ...cardsRow, marginTop: 16 }}>
         <div style={statCard}>
-          <div style={statLabel}>Iuran masuk</div>
+          <div style={statLabel}>Dana masuk</div>
           <div style={{ ...statBig, color: '#16a34a' }}>{rupiah(pemasukan)}</div>
         </div>
         <div style={statCard}>
