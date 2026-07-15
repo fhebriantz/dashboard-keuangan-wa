@@ -1,0 +1,33 @@
+/* Reset global — berlaku untuk semua halaman (marketing, laporan, admin, struk).
+   Tujuan utama: mencegah horizontal scroll di layar sempit (mis. 320px). */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  /* Guard anti geser-samping. `clip` (bukan `hidden`) tidak membuat scroll
+     container sehingga navbar `position: sticky` tetap berfungsi. */
+  overflow-x: clip;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  overflow-x: clip;
+  /* Cegah kata/URL panjang tanpa spasi mendorong lebar melewati viewport. */
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Media tidak boleh melebihi kontainernya. Canvas Chart.js sengaja dilewati
+   (responsive:true mengatur ukurannya sendiri; memaksa height:auto merusak grafik). */
+img,
+svg,
+video {
+  max-width: 100%;
+  height: auto;
+}

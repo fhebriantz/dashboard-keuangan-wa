@@ -1,8 +1,12 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import ThemeToggle from './laporan/[id]/ThemeToggle'
 
 // Navbar + tema untuk semua halaman publik (landing, panduan, demo, daftar).
 // Menyuntikkan variabel tema sekaligus agar tampilan konsisten di semua halaman.
+// Di mobile (<= 720px) menu berubah menjadi burger.
 
 const THEME_INIT = `(function(){try{var t=localStorage.getItem('laporan-theme');if(t)document.documentElement.dataset.theme=t;}catch(e){}})();`
 const THEME_CSS = `
@@ -12,9 +16,22 @@ const THEME_CSS = `
 html{scroll-behavior:smooth}
 body{background:var(--bg)}
 a{color:inherit}
+.mkt-desktop{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.mkt-mobile{display:none;align-items:center;gap:8px}
+.mkt-burger{display:grid;place-items:center;height:40px;width:40px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:18px;line-height:1}
+.mkt-panel{display:none}
+@media(max-width:720px){
+  .mkt-desktop{display:none}
+  .mkt-mobile{display:flex}
+  .mkt-panel.open{display:flex;flex-direction:column;gap:2px;padding:6px 20px 14px;border-top:1px solid var(--border)}
+  .mkt-panel a{padding:11px 4px;font-size:15px;font-weight:600;color:var(--text);text-decoration:none;border-bottom:1px solid var(--border)}
+  .mkt-panel a:last-child{border-bottom:none}
+}
 `
 
 export default function MarketingNav() {
+  const [open, setOpen] = useState(false)
+
   return (
     <>
       <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
@@ -40,10 +57,12 @@ export default function MarketingNav() {
             color: 'var(--text)',
           }}
         >
-          <Link href="/" style={{ fontWeight: 800, fontSize: 17, textDecoration: 'none' }}>
+          <Link href="/" style={{ fontWeight: 800, fontSize: 17, textDecoration: 'none' }} onClick={() => setOpen(false)}>
             💰 KeuanganWA
           </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+
+          {/* Menu desktop */}
+          <div className="mkt-desktop">
             <Link href="/#fitur" style={link}>Fitur</Link>
             <Link href="/#harga" style={link}>Harga</Link>
             <Link href="/panduan" style={link}>Panduan</Link>
@@ -51,6 +70,29 @@ export default function MarketingNav() {
             <Link href="/daftar" style={cta}>Daftar</Link>
             <ThemeToggle />
           </div>
+
+          {/* Kontrol mobile: tema + burger */}
+          <div className="mkt-mobile">
+            <ThemeToggle />
+            <button
+              type="button"
+              className="mkt-burger"
+              aria-label={open ? 'Tutup menu' : 'Buka menu'}
+              aria-expanded={open}
+              onClick={() => setOpen((v) => !v)}
+            >
+              {open ? '✕' : '☰'}
+            </button>
+          </div>
+        </div>
+
+        {/* Panel dropdown mobile */}
+        <div className={`mkt-panel${open ? ' open' : ''}`} style={{ maxWidth: 1040, margin: '0 auto' }}>
+          <Link href="/#fitur" onClick={() => setOpen(false)}>Fitur</Link>
+          <Link href="/#harga" onClick={() => setOpen(false)}>Harga</Link>
+          <Link href="/panduan" onClick={() => setOpen(false)}>Panduan</Link>
+          <Link href="/demo" onClick={() => setOpen(false)}>Demo</Link>
+          <Link href="/daftar" onClick={() => setOpen(false)}>Daftar</Link>
         </div>
       </nav>
     </>
