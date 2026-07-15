@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import MarketingNav from '../MarketingNav'
 import { USE_CASES } from '@/lib/use-cases'
 
@@ -37,6 +38,14 @@ export default function PanduanPage() {
   return (
     <>
       <MarketingNav />
+      <style
+        dangerouslySetInnerHTML={{
+          __html:
+            '.uc-sum::-webkit-details-marker{display:none}' +
+            ".uc-sum::after{content:'▸';margin-left:auto;color:var(--muted);display:inline-block;transition:transform .15s ease}" +
+            'details[open]>.uc-sum::after{transform:rotate(90deg)}',
+        }}
+      />
       <main style={wrap}>
         <div style={{ color: 'var(--muted)', fontSize: 13 }}>Panduan Pemakaian</div>
         <h1 style={{ fontSize: 26, margin: '2px 0 14px' }}>Dashboard Keuangan WA</h1>
@@ -130,31 +139,36 @@ export default function PanduanPage() {
 
       <Section title="🧩 Contoh sesuai kebutuhan">
         <p style={p}>
-          Mesinnya sama, tinggal pilih mode saat daftar. Berikut contoh perintah untuk tiap kebutuhan:
+          Mesinnya sama, tinggal pilih mode saat daftar. Ketuk tiap kebutuhan untuk lihat contoh chat & demo laporannya:
         </p>
-        <div style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'grid', gap: 10 }}>
           {USE_CASES.map((u) => (
-            <div key={u.title} style={useCard}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 20 }}>{u.icon}</span>
-                <b>{u.title}</b>
+            <details key={u.slug} style={useCard}>
+              <summary className="uc-sum" style={summaryStyle}>
+                <span style={{ fontSize: 18 }}>{u.icon}</span>
+                <b style={{ flex: 1 }}>{u.title}</b>
                 <span style={u.mode === 'komunitas' ? tagKomunitas : tagKeluarga}>
                   {u.mode === 'komunitas' ? 'Komunitas' : 'Keluarga'}
                 </span>
-              </div>
-              <div style={{ color: 'var(--muted)', fontSize: 13, margin: '4px 0 8px' }}>{u.tagline}</div>
-              <div style={chatBox}>
-                {u.contoh.map((c, i) => (
-                  <div key={i} style={{ marginBottom: 6 }}>
-                    <div>
-                      <span style={{ color: 'var(--accent)', fontWeight: 700 }}>Kamu › </span>
-                      {c.ketik}
+              </summary>
+              <div style={{ marginTop: 10 }}>
+                <div style={{ color: 'var(--muted)', fontSize: 13, marginBottom: 8 }}>{u.tagline}</div>
+                <div style={chatBox}>
+                  {u.contoh.map((c, i) => (
+                    <div key={i} style={{ marginBottom: 6 }}>
+                      <div>
+                        <span style={{ color: 'var(--accent)', fontWeight: 700 }}>Kamu › </span>
+                        {c.ketik}
+                      </div>
+                      <div style={{ color: 'var(--muted)', paddingLeft: 14 }}>↳ {c.balas}</div>
                     </div>
-                    <div style={{ color: 'var(--muted)', paddingLeft: 14 }}>↳ {c.balas}</div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <Link href={`/demo/${u.slug}`} style={{ display: 'inline-block', marginTop: 10, color: 'var(--accent)', fontWeight: 600, fontSize: 13 }}>
+                  Lihat demo laporan {u.title} →
+                </Link>
               </div>
-            </div>
+            </details>
           ))}
         </div>
       </Section>
@@ -227,6 +241,14 @@ const useCard: React.CSSProperties = {
   borderRadius: 12,
   padding: 14,
   background: 'var(--surface)',
+}
+const summaryStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  cursor: 'pointer',
+  fontSize: 15,
+  listStyle: 'none',
 }
 const tagBase: React.CSSProperties = {
   padding: '1px 8px',

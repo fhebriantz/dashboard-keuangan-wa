@@ -158,7 +158,8 @@ const HELP_KOMUNITAS =
   '• belum bayar / sudah bayar\n' +
   '• link laporan — bagikan ke warga\n\n' +
   'Catat *pengeluaran kas* — ketik langsung:\n' +
-  '• Beli galon 20rb\n\n' +
+  '• Beli galon 20rb\n' +
+  '• (foto struk: ketik *upload*)\n\n' +
   'Perintah lain:\n' +
   '• *total* — saldo kas + ringkasan\n' +
   '• *laporan* — rekap lengkap bulan ini\n' +
@@ -168,14 +169,20 @@ const HELP_TEXT =
   '📌 *Menu Bot Keuangan*\n\n' +
   'Catat *pengeluaran* — ketik langsung:\n' +
   '• Bensin 50000\n' +
-  '• Makan siang 35rb\n\n' +
+  '• Makan siang 35rb\n' +
+  '• beli obat 50rb #kesehatan (pilih kategori sendiri)\n\n' +
   'Catat *pemasukan* — pakai kata "masuk":\n' +
   '• masuk gaji 5000000\n' +
   '• pemasukan bonus 1jt\n\n' +
+  '*Banyak sekaligus* — kirim beberapa baris:\n' +
+  '• bensin 20rb\n' +
+  '  nasi padang 25rb\n' +
+  '  masuk bonus 100rb\n\n' +
+  '*Foto struk* — ketik *upload*, lalu foto di web (foto tak disimpan).\n\n' +
   'Atur *amplop* (jatah per kategori):\n' +
   '• amplop makan 2jt\n' +
-  '• amplop transport 500rb\n' +
-  '• pindah makan transport 300rb\n\n' +
+  '• pindah makan transport 300rb\n' +
+  '• hapus amplop makan\n\n' +
   'Perintah lain:\n' +
   '• *total* — ringkasan + per kategori\n' +
   '• *laporan* — rekap lengkap bulan ini\n' +

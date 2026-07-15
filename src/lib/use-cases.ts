@@ -6,6 +6,7 @@
 export type Contoh = { ketik: string; balas: string }
 
 export type UseCase = {
+  slug: string
   icon: string
   title: string
   mode: 'keluarga' | 'komunitas'
@@ -15,6 +16,7 @@ export type UseCase = {
 
 export const USE_CASES: UseCase[] = [
   {
+    slug: 'keluarga',
     icon: '👨‍👩‍👧',
     title: 'Keluarga / Pribadi',
     mode: 'keluarga',
@@ -27,6 +29,7 @@ export const USE_CASES: UseCase[] = [
     ],
   },
   {
+    slug: 'rt-rw',
     icon: '🏘️',
     title: 'RT / RW & Lingkungan',
     mode: 'komunitas',
@@ -40,6 +43,7 @@ export const USE_CASES: UseCase[] = [
     ],
   },
   {
+    slug: 'paguyuban',
     icon: '🤝',
     title: 'Paguyuban / Komunitas / Arisan',
     mode: 'komunitas',
@@ -52,6 +56,7 @@ export const USE_CASES: UseCase[] = [
     ],
   },
   {
+    slug: 'kas-kelas',
     icon: '🎓',
     title: 'Kas Kelas / Sekolah',
     mode: 'komunitas',
@@ -64,6 +69,7 @@ export const USE_CASES: UseCase[] = [
     ],
   },
   {
+    slug: 'volunteer',
     icon: '❤️',
     title: 'Volunteer & Sosial',
     mode: 'komunitas',
@@ -76,6 +82,7 @@ export const USE_CASES: UseCase[] = [
     ],
   },
   {
+    slug: 'ibadah',
     icon: '🕌',
     title: 'Tempat Ibadah',
     mode: 'komunitas',
@@ -88,6 +95,7 @@ export const USE_CASES: UseCase[] = [
     ],
   },
   {
+    slug: 'umkm',
     icon: '🏪',
     title: 'Bisnis & UMKM',
     mode: 'keluarga',

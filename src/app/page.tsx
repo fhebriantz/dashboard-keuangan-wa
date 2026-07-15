@@ -128,6 +128,9 @@ export default async function LandingPage() {
                   </div>
                 ))}
               </div>
+              <Link href={`/demo/${u.slug}`} style={{ display: 'inline-block', marginTop: 10, color: 'var(--accent)', fontWeight: 600, fontSize: 13, textDecoration: 'none' }}>
+                Lihat demo laporan {u.title} →
+              </Link>
             </div>
           ))}
         </div>
