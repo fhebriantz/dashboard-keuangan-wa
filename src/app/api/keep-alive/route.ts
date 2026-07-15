@@ -17,6 +17,12 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createAdminClient()
+
+  // Bersihkan penanda idempotensi lama (>7 hari) — retry gateway hanya
+  // terjadi dalam hitungan detik/menit, jadi aman dihapus.
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  await supabase.from('webhook_events').delete().lt('created_at', cutoff)
+
   const { error, count } = await supabase
     .from('families')
     .select('id', { count: 'exact', head: true })

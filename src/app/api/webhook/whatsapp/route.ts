@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/phone'
@@ -127,6 +128,26 @@ export async function POST(req: NextRequest) {
 
   if (!isActive) {
     return respond('Masa langganan Anda telah habis. Silakan perpanjang di dashboard.')
+  }
+
+  // -----------------------------------------------------------
+  // 4a) Idempotensi: klaim pesan ini (sender+timestamp+isi). Kalau kunci
+  //     sama datang lagi (retry gateway) -> abaikan, jangan proses ulang.
+  // -----------------------------------------------------------
+  const ts = body.timestamp
+  if (ts != null && String(ts).length > 0) {
+    const eventKey = crypto
+      .createHash('sha256')
+      .update(`${sender}|${ts}|${inbound!.message}|${inbound!.imageUrl ?? ''}`)
+      .digest('hex')
+    const { error: dupErr } = await supabase.from('webhook_events').insert({ event_key: eventKey })
+    if (dupErr) {
+      if (dupErr.code === '23505') {
+        // Sudah pernah diproses -> jangan balas/simpan lagi.
+        return NextResponse.json({ ok: true, deduped: true })
+      }
+      console.error('[webhook] dedup insert error:', dupErr.message) // lanjut proses
+    }
   }
 
   // -----------------------------------------------------------
