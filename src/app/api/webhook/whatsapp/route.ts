@@ -4,6 +4,7 @@ import { normalizePhone } from '@/lib/phone'
 import { parseEntry, parseBulk, type ParsedEntry } from '@/lib/parse-entry'
 import { aiInterpret } from '@/lib/ai/interpret'
 import { aiReadReceipt } from '@/lib/ai/receipt'
+import { aiEnabled } from '@/lib/ai/gemini'
 import {
   applySetBudget,
   applyMoveBudget,
@@ -207,10 +208,13 @@ export async function POST(req: NextRequest) {
   // 6) Foto struk (kalau ada) -> AI vision baca total. Hanya saat ada gambar.
   // -----------------------------------------------------------
   if (inbound!.imageUrl) {
+    if (!aiEnabled()) {
+      return respond('📷 Fitur baca struk belum aktif. Ketik manual saja, mis. "Belanja 150000".')
+    }
     const rEntry = await aiReadReceipt(inbound!.imageUrl)
     if (rEntry) return recordAndRespond(rEntry)
     return respond(
-      '📷 Struk tak terbaca (atau fitur foto belum aktif). Ketik manual saja, mis. "Belanja 150000".',
+      '📷 Struk tak terbaca (foto kurang jelas / bukan struk). Ketik manual saja, mis. "Belanja 150000".',
     )
   }
 

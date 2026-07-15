@@ -31,13 +31,14 @@ export function normalizeInbound(body: Record<string, any>): InboundMessage | nu
   const message = body.message ?? body.message_text ?? body.text ?? body.body
   if (sender == null && message == null) return null
 
-  // Gambar: Fonnte kirim type="image" + url berisi link media.
-  const type = String(body.type ?? '').toLowerCase()
-  const url = body.url || body.media || body.imageUrl || body.file
+  // Gambar/media: gateway isi salah satu field URL ini. Terima URL http apa
+  // pun; tipe (image/…) divalidasi saat diunduh di aiReadReceipt.
+  const media =
+    body.url || body.media || body.imageUrl || body.image || body.file || body.attachment || body.mediaUrl
   let imageUrl: string | undefined
-  if (url) {
-    const u = String(url)
-    if (type === 'image' || /\.(jpe?g|png|webp)(\?|$)/i.test(u)) imageUrl = u
+  if (media) {
+    const u = String(media)
+    if (/^https?:\/\//i.test(u)) imageUrl = u
   }
 
   return { sender: String(sender ?? ''), message: String(message ?? ''), imageUrl }
