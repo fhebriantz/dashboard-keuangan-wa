@@ -1,11 +1,9 @@
-import { submitRegistration } from './actions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPackages, getPricingConfig, getPackage, hitungTotal, rupiah } from '@/lib/pricing'
 import MarketingNav from '../MarketingNav'
+import RegisterForm from './RegisterForm'
 
 export const dynamic = 'force-dynamic'
-
-const SLOTS = 5
 
 export default async function DaftarPage({
   searchParams,
@@ -86,50 +84,7 @@ export default async function DaftarPage({
 
       {sp.err && <p style={errBox}>⚠️ {sp.err}</p>}
 
-      <form action={submitRegistration} style={{ display: 'grid', gap: 14, marginTop: 12 }}>
-        <label style={lab}>
-          Nama grup / keluarga *
-          <input name="nama_keluarga" required placeholder="cth: Keluarga Budi" style={inp} />
-        </label>
-
-        <div style={card}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Anggota</div>
-          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 0 }}>
-            Isi minimal satu. Nomor inilah yang dipakai chat ke bot.
-          </p>
-          <div style={{ display: 'grid', gap: 10 }}>
-            {Array.from({ length: SLOTS }).map((_, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8 }}>
-                <input
-                  name={`m_nama_${i}`}
-                  placeholder={`Nama anggota ${i + 1}`}
-                  style={{ ...inp, flex: 1 }}
-                />
-                <input
-                  name={`m_wa_${i}`}
-                  placeholder="08123..."
-                  style={{ ...inp, flex: 1 }}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <label style={lab}>
-          Pilih paket durasi *
-          <select name="paket" required defaultValue={packages[0]?.id} style={inp}>
-            {packages.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <button type="submit" style={btn}>
-          Daftar Sekarang
-        </button>
-      </form>
+      <RegisterForm config={config} packages={packages} />
       </main>
     </>
   )
@@ -146,26 +101,6 @@ const wrap: React.CSSProperties = {
 }
 const card: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 12, padding: 16, background: 'var(--surface)' }
 const h2: React.CSSProperties = { fontSize: 16, margin: '0 0 4px' }
-const lab: React.CSSProperties = { display: 'grid', gap: 5, fontSize: 14, fontWeight: 500 }
-const inp: React.CSSProperties = {
-  padding: '10px 12px',
-  border: '1px solid var(--border)',
-  borderRadius: 8,
-  fontSize: 15,
-  fontWeight: 400,
-  background: 'var(--surface)',
-  color: 'var(--text)',
-}
-const btn: React.CSSProperties = {
-  padding: '12px',
-  background: '#16a34a',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 8,
-  fontSize: 16,
-  fontWeight: 600,
-  cursor: 'pointer',
-}
 const rekBox: React.CSSProperties = {
   background: 'var(--track)',
   borderRadius: 8,

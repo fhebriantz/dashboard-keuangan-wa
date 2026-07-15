@@ -5,7 +5,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizePhone } from '@/lib/phone'
 import { getPackage } from '@/lib/pricing'
 
-const SLOTS = 5
+// Batas maksimum baris anggota yang dipindai dari form. Baris kosong dilewati,
+// jadi angka ini aman diset longgar (form client bisa menambah baris dinamis).
+const SLOTS = 30
 
 export async function submitRegistration(formData: FormData) {
   const nama_keluarga = String(formData.get('nama_keluarga') ?? '').trim()
