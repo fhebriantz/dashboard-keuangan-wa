@@ -4,6 +4,7 @@ import { aiReadReceiptFromBase64 } from '@/lib/ai/receipt'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 30 // beri ruang bila pembacaan AI agak lambat
 
 // Terima foto struk -> baca via AI -> simpan sebagai pengeluaran keluarga.
 // GAMBAR TIDAK DISIMPAN: hanya diproses di memori lalu dibuang.

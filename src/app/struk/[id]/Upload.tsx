@@ -6,6 +6,32 @@ const rupiah = (n: number) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math
 
 type Result = { ok: boolean; error?: string; nama?: string; nominal?: number; kategori?: string }
 
+// Kompres foto di browser sebelum diunggah. Foto kamera HP sering 3-8 MB,
+// melebihi batas body request Vercel (~4.5 MB) sehingga upload gagal sebelum
+// sampai ke server. Resize ke maks 1600px + JPEG q0.8 menekan ukuran ke
+// ratusan KB (teks struk tetap terbaca) sekaligus mempercepat pembacaan AI.
+async function compressImage(file: File, maxDim = 1600, quality = 0.8): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height))
+    const width = Math.round(bitmap.width * scale)
+    const height = Math.round(bitmap.height * scale)
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return file
+    ctx.drawImage(bitmap, 0, 0, width, height)
+    bitmap.close?.()
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', quality)
+    )
+    return blob ?? file
+  } catch {
+    return file // kalau kompresi gagal, kirim file asli
+  }
+}
+
 export default function Upload({ id }: { id: string }) {
   const [fileName, setFileName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -19,12 +45,26 @@ export default function Upload({ id }: { id: string }) {
     setBusy(true)
     setResult(null)
     try {
+      const compressed = await compressImage(file)
       const fd = new FormData()
-      fd.append('file', file)
+      fd.append('file', compressed, 'struk.jpg')
       const res = await fetch(`/api/struk/${id}`, { method: 'POST', body: fd })
-      setResult(await res.json())
+      // Response mungkin bukan JSON (mis. 413/504 dari platform) — tangani rapi.
+      let data: Result | null = null
+      try {
+        data = await res.json()
+      } catch {
+        data = null
+      }
+      if (data) {
+        setResult(data)
+      } else if (res.status === 413) {
+        setResult({ ok: false, error: 'Foto terlalu besar. Coba foto ulang lebih dekat/resolusi lebih kecil.' })
+      } else {
+        setResult({ ok: false, error: `Gagal memproses (kode ${res.status}). Coba lagi.` })
+      }
     } catch {
-      setResult({ ok: false, error: 'Gagal mengirim. Coba lagi.' })
+      setResult({ ok: false, error: 'Gagal mengirim — cek koneksi lalu coba lagi.' })
     }
     setBusy(false)
   }
