@@ -5,6 +5,13 @@ import { normalizeCategory, emojiOf } from '@/lib/category'
 import { monthlyData, type CategoryRow } from '@/lib/report-data'
 import { getPricingConfig, getPackages, rupiah as rp } from '@/lib/pricing'
 
+/** Apakah pelanggan ingin upload/scan struk lewat web? */
+export function isUploadIntent(message: string): boolean {
+  const t = (message ?? '').trim().toLowerCase()
+  if (t === 'upload' || t === 'unggah' || t === 'struk' || t === 'scan') return true
+  return /\b(upload|unggah|scan|foto|kirim|catat)\s+struk\b/.test(t)
+}
+
 /** Apakah pesan dari nomor tak terdaftar bermaksud mendaftar? */
 export function isRegisterIntent(message: string): boolean {
   return /^(daftar|mendaftar|mau daftar|register|langganan|berlangganan)/i.test(

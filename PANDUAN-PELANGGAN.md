@@ -210,11 +210,15 @@ Cara **utama & tercepat** adalah perintah singkat seperti di panduan ini —
 `Bensin 50rb`, `amplop makan 2jt`, `total`, `laporan`, `hapus amplop makan`.
 Ini **langsung diproses, instan, dan gratis**. Jadikan kebiasaan sehari-hari. 👍
 
+### 📷 Scan struk (kalau fitur AI aktif)
+Ketik **`upload`** di chat → bot mengirim link. Buka di HP, **foto struk**-nya,
+total & kategori dibaca otomatis dan langsung tercatat.
+> Fotonya **tidak disimpan** — hanya dibaca sekali lalu dibuang.
+
 ### ✨ Jaring pengaman: kalau lupa format (opsional, kalau AI aktif)
-Kalau admin mengaktifkan fitur pintar, bot **masih berusaha paham** saat kamu:
-- **Lupa format / ketik kalimat panjang** — mis. "geser 50rb dari jajan ke
-  transport" atau "amplop makan hapus aja".
-- **Kirim foto struk** 📷 — totalnya dibaca otomatis.
+Kalau admin mengaktifkan fitur pintar, bot **masih berusaha paham** saat kamu
+**lupa format / ketik kalimat panjang** — mis. "geser 50rb dari jajan ke
+transport" atau "amplop makan hapus aja".
 
 > Ini cuma **cadangan** kalau sesekali lupa — **sedikit lebih lambat**. Untuk
 > pemakaian rutin, tetap pakai **format singkat** di atas biar cepat & ringan.

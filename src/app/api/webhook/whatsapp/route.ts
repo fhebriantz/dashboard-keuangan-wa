@@ -18,6 +18,7 @@ import {
   detectSetBudget,
   detectMoveBudget,
   detectDeleteBudget,
+  isUploadIntent,
   isRegisterIntent,
   registerInfoText,
 } from '@/lib/whatsapp/commands'
@@ -172,6 +173,19 @@ export async function POST(req: NextRequest) {
   }
 
   // -----------------------------------------------------------
+  // 4b2) Minta upload struk -> kirim link (gambar tak disimpan).
+  // -----------------------------------------------------------
+  if (isUploadIntent(inbound!.message)) {
+    const base = process.env.APP_URL?.replace(/\/$/, '')
+    if (!base) return respond('Fitur upload struk belum siap. Ketik manual saja, mis. "Belanja 150000".')
+    return respond(
+      '📷 Upload struk di sini (buka di HP, bisa langsung foto):\n' +
+        `${base}/struk/${family.id}\n\n` +
+        'Fotonya *tidak disimpan* — hanya dibaca lalu dicatat.',
+    )
+  }
+
+  // -----------------------------------------------------------
   // 4c) Banyak transaksi sekaligus (satu per baris)? Catat massal.
   // -----------------------------------------------------------
   const bulk = parseBulk(inbound!.message)
@@ -218,10 +232,12 @@ export async function POST(req: NextRequest) {
     if (inbound!.imageUrl && !aiEnabled()) {
       return respond('📷 Fitur baca struk belum aktif. Ketik manual ya, mis. "Belanja 150000".')
     }
-    // Tak ada URL gambar -> gateway (paket) tak meneruskan media.
+    // Tak ada URL gambar -> gateway tak meneruskan media. Arahkan ke upload web.
+    const base = process.env.APP_URL?.replace(/\/$/, '')
     return respond(
-      '📷 Maaf, foto struk belum bisa dibaca lewat WhatsApp di paket ini.\n' +
-        'Ketik manual saja, mis. "Belanja 150000" — atau lihat *bantuan*.',
+      base
+        ? `📷 Untuk catat dari struk, buka & foto di sini:\n${base}/struk/${family.id}\n\n(Fotonya tidak disimpan.) Atau ketik manual, mis. "Belanja 150000".`
+        : '📷 Kirim foto belum didukung. Ketik manual saja, mis. "Belanja 150000".',
     )
   }
 
