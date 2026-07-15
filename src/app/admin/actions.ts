@@ -253,14 +253,18 @@ export async function setIuranNominal(formData: FormData) {
   await guard()
   const family_id = String(formData.get('family_id') ?? '')
   const nominal = Number(formData.get('iuran_nominal') ?? 0)
+  const tempo = parseInt(String(formData.get('iuran_jatuh_tempo') ?? ''), 10)
   const supabase = createAdminClient()
   const { error } = await supabase
     .from('families')
-    .update({ iuran_nominal: Number.isFinite(nominal) && nominal > 0 ? nominal : null })
+    .update({
+      iuran_nominal: Number.isFinite(nominal) && nominal > 0 ? nominal : null,
+      iuran_jatuh_tempo: Number.isFinite(tempo) && tempo >= 1 && tempo <= 28 ? tempo : null,
+    })
     .eq('id', family_id)
   if (error) redirect('/admin?err=' + encodeURIComponent(error.message))
   revalidatePath('/admin')
-  redirect('/admin?ok=' + encodeURIComponent('Iuran default disimpan'))
+  redirect('/admin?ok=' + encodeURIComponent('Pengaturan iuran disimpan'))
 }
 
 export async function toggleLaporanPublik(formData: FormData) {

@@ -25,6 +25,11 @@ export function formatTanggalWIB(iso: string): string {
   }).format(new Date(iso))
 }
 
+/** Tanggal (1-31) hari ini menurut WIB — untuk memicu reminder jatuh tempo. */
+export function wibDayOfMonth(now: Date = new Date()): number {
+  return new Date(now.getTime() + WIB_OFFSET_MS).getUTCDate()
+}
+
 /** Periode iuran 'YYYY-MM' menurut WIB (dipakai kas komunitas). */
 export function wibPeriode(now: Date = new Date()): string {
   const wib = new Date(now.getTime() + WIB_OFFSET_MS)

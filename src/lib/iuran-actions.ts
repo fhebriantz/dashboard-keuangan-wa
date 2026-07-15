@@ -16,6 +16,7 @@ export type IuranAction =
   | { kind: 'sudah_bayar' }
   | { kind: 'daftar_anggota' }
   | { kind: 'set_iuran'; nominal: number }
+  | { kind: 'set_tempo'; tanggal: number }
   | { kind: 'link' }
 
 /**
@@ -31,6 +32,13 @@ export function detectIuran(message: string): IuranAction | null {
   if (/^(sudah bayar|yang sudah bayar|udah bayar|sudah iuran)$/.test(low)) return { kind: 'sudah_bayar' }
   if (/^(daftar anggota|list anggota|anggota|warga)$/.test(low)) return { kind: 'daftar_anggota' }
   if (/^(link laporan|link|link kas|bagikan laporan)$/.test(low)) return { kind: 'link' }
+
+  // Set tanggal jatuh tempo: "jatuh tempo 5" / "tempo tanggal 5".
+  const tempoM = low.match(/^(?:jatuh\s*tempo|tempo)(?:\s+tanggal)?\s+(\d{1,2})$/)
+  if (tempoM) {
+    const tgl = parseInt(tempoM[1], 10)
+    if (tgl >= 1 && tgl <= 28) return { kind: 'set_tempo', tanggal: tgl }
+  }
 
   // Set nominal iuran default: "iuran bulanan 50rb" / "set iuran 50rb".
   const setM = low.match(/^(?:set\s+)?iuran\s+(?:bulanan|per bulan|default)\s+(.+)$/)
@@ -134,6 +142,15 @@ export async function handleIuran(
         .eq('id', family.id)
       if (error) return 'Gagal menyetel iuran. Coba lagi sebentar.'
       return `✅ Iuran default diset ${rupiah(action.nominal)}/periode.\nCatat bayar: *nama bayar* atau *iuran nama*.`
+    }
+
+    case 'set_tempo': {
+      const { error } = await supabase
+        .from('families')
+        .update({ iuran_jatuh_tempo: action.tanggal })
+        .eq('id', family.id)
+      if (error) return 'Gagal menyetel jatuh tempo. Coba lagi sebentar.'
+      return `✅ Jatuh tempo iuran diset tanggal *${action.tanggal}* tiap bulan.\nWarga yang belum bayar akan diingatkan otomatis via WA.`
     }
 
     case 'tambah_anggota': {

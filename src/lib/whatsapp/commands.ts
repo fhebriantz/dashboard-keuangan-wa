@@ -153,8 +153,10 @@ const HELP_KOMUNITAS =
   'Kelola *anggota & iuran*:\n' +
   '• tambah anggota Budi 0812xxx\n' +
   '• iuran bulanan 50rb (set default)\n' +
+  '• jatuh tempo 5 (reminder otomatis tgl 5)\n' +
   '• anggota — lihat roster\n' +
-  '• belum bayar / sudah bayar\n\n' +
+  '• belum bayar / sudah bayar\n' +
+  '• link laporan — bagikan ke warga\n\n' +
   'Catat *pengeluaran kas* — ketik langsung:\n' +
   '• Beli galon 20rb\n\n' +
   'Perintah lain:\n' +

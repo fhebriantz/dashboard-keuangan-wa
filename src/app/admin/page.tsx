@@ -28,6 +28,7 @@ type Family = {
   expired_at: string | null
   mode?: string | null
   iuran_nominal?: number | null
+  iuran_jatuh_tempo?: number | null
   laporan_publik?: boolean | null
   public_slug?: string | null
 }
@@ -58,7 +59,7 @@ export default async function AdminPage({
   const [{ data: families }, { data: users }, { data: regs }, { data: anggota }] = await Promise.all([
     supabase
       .from('families')
-      .select('id, nama_keluarga, status_langganan, expired_at, mode, iuran_nominal, laporan_publik, public_slug')
+      .select('id, nama_keluarga, status_langganan, expired_at, mode, iuran_nominal, iuran_jatuh_tempo, laporan_publik, public_slug')
       .order('created_at', { ascending: false }),
     supabase
       .from('users')
@@ -282,7 +283,7 @@ export default async function AdminPage({
 
                   {/* Iuran default + laporan publik */}
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 10 }}>
-                    <form action={setIuranNominal} style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+                    <form action={setIuranNominal} style={{ display: 'flex', gap: 6, alignItems: 'flex-end', flexWrap: 'wrap' }}>
                       <input type="hidden" name="family_id" value={f.id} />
                       <label style={{ ...lab, fontSize: 12 }}>
                         Iuran default / periode
@@ -292,6 +293,18 @@ export default async function AdminPage({
                           defaultValue={f.iuran_nominal ?? ''}
                           placeholder="50000"
                           style={{ ...inp, width: 130 }}
+                        />
+                      </label>
+                      <label style={{ ...lab, fontSize: 12 }}>
+                        Jatuh tempo (tgl 1-28)
+                        <input
+                          name="iuran_jatuh_tempo"
+                          type="number"
+                          min={1}
+                          max={28}
+                          defaultValue={f.iuran_jatuh_tempo ?? ''}
+                          placeholder="5"
+                          style={{ ...inp, width: 90 }}
                         />
                       </label>
                       <button style={btn}>Simpan</button>

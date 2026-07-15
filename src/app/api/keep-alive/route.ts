@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendIuranReminders } from '@/lib/iuran-reminder'
 
 // Endpoint ringan untuk menjaga project Supabase tetap "hidup".
 // Supabase free tier auto-pause setelah ~7 hari tanpa aktivitas; cron
 // harian memanggil endpoint ini agar ada query rutin ke database.
+// Sekalian: kirim reminder iuran kas komunitas yang jatuh tempo hari ini
+// (digabung di sini agar tetap 1 cron — hemat kuota cron Vercel Hobby).
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60 // reminder bisa mengirim beberapa WA berurutan
 
 export async function GET(req: NextRequest) {
   // Kalau CRON_SECRET di-set, wajib cocok (Vercel Cron otomatis mengirimnya
@@ -32,9 +36,18 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
   }
 
+  // Reminder iuran — jangan sampai kegagalannya menjatuhkan keep-alive.
+  let reminders = 0
+  try {
+    reminders = await sendIuranReminders(supabase)
+  } catch (e) {
+    console.error('[keep-alive] reminder error:', (e as Error).message)
+  }
+
   return NextResponse.json({
     ok: true,
     families: count ?? 0,
+    reminders,
     at: new Date().toISOString(),
   })
 }
