@@ -25,7 +25,14 @@ import {
 } from '@/lib/whatsapp/commands'
 import { emojiOf, asCategory } from '@/lib/category'
 import { lookupCategoryMemory, learnCategoryMemory } from '@/lib/category-memory'
-import { detectIuran, handleIuran } from '@/lib/iuran-actions'
+import {
+  detectIuran,
+  handleIuran,
+  isStopIntent,
+  optOutReminder,
+  isStartIntent,
+  optInReminder,
+} from '@/lib/iuran-actions'
 import { wibMonthStartISO } from '@/lib/time'
 
 // service_role + supabase-js butuh runtime Node (bukan Edge murni).
@@ -106,6 +113,16 @@ export async function POST(req: NextRequest) {
     : null
 
   if (!user || !family) {
+    // Anggota roster (nomornya dimasukkan bendahara, bukan user terdaftar) yang
+    // ingin berhenti/lanjut menerima reminder.
+    if (isStopIntent(inbound!.message)) {
+      const r = await optOutReminder(supabase, sender)
+      if (r) return respond(r)
+    }
+    if (isStartIntent(inbound!.message)) {
+      const r = await optInReminder(supabase, sender)
+      if (r) return respond(r)
+    }
     // Nomor tak terdaftar yang ingin mendaftar -> kirim info + link form.
     if (isRegisterIntent(inbound!.message)) {
       return respond(await registerInfoText(supabase))
@@ -149,6 +166,18 @@ export async function POST(req: NextRequest) {
       }
       console.error('[webhook] dedup insert error:', dupErr.message) // lanjut proses
     }
+  }
+
+  // -----------------------------------------------------------
+  // 4a2) Berhenti/lanjut reminder (kalau nomor ini ada di roster iuran).
+  // -----------------------------------------------------------
+  if (isStopIntent(inbound!.message)) {
+    const r = await optOutReminder(supabase, sender)
+    if (r) return respond(r)
+  }
+  if (isStartIntent(inbound!.message)) {
+    const r = await optInReminder(supabase, sender)
+    if (r) return respond(r)
   }
 
   // -----------------------------------------------------------

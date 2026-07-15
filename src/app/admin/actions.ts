@@ -249,6 +249,16 @@ export async function deleteIuranAnggota(formData: FormData) {
   redirect('/admin?ok=' + encodeURIComponent('Anggota dihapus'))
 }
 
+export async function toggleReminderOptout(formData: FormData) {
+  await guard()
+  const id = String(formData.get('id') ?? '')
+  const current = String(formData.get('current') ?? '') === 'true'
+  const supabase = createAdminClient()
+  await supabase.from('iuran_anggota').update({ reminder_optout: !current }).eq('id', id)
+  revalidatePath('/admin')
+  redirect('/admin?ok=' + encodeURIComponent(current ? 'Pengingat diaktifkan lagi' : 'Pengingat dimatikan'))
+}
+
 export async function setIuranNominal(formData: FormData) {
   await guard()
   const family_id = String(formData.get('family_id') ?? '')

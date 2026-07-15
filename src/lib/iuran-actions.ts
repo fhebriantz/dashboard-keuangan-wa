@@ -9,6 +9,51 @@ import { makeSlug } from '@/lib/slug'
 
 const rupiah = (n: number) => 'Rp ' + new Intl.NumberFormat('id-ID').format(Math.round(n))
 
+/** Apakah pesan bermaksud berhenti menerima reminder? */
+export function isStopIntent(message: string): boolean {
+  return /^(stop|berhenti|unsubscribe|stop reminder|berhenti ingat|jangan ingatkan)\b/i.test(
+    (message ?? '').trim(),
+  )
+}
+
+/**
+ * Set opt-out reminder untuk semua entri roster yang nomornya = sender.
+ * Return teks konfirmasi bila ada yang ter-update; null bila nomor tak ada di
+ * roster mana pun (biar alur normal yang menangani).
+ */
+export async function optOutReminder(
+  supabase: SupabaseClient,
+  sender: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('iuran_anggota')
+    .update({ reminder_optout: true })
+    .eq('nomor_wa', sender)
+    .eq('reminder_optout', false)
+    .select('id')
+  if (error || !data || data.length === 0) return null
+  return '🔕 Oke, kamu tidak akan menerima pengingat iuran lagi. Balas *MULAI* kalau berubah pikiran.'
+}
+
+/** Kebalikan STOP — batalkan opt-out. */
+export function isStartIntent(message: string): boolean {
+  return /^(mulai|start|langganan lagi|terima lagi)\b/i.test((message ?? '').trim())
+}
+
+export async function optInReminder(
+  supabase: SupabaseClient,
+  sender: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('iuran_anggota')
+    .update({ reminder_optout: false })
+    .eq('nomor_wa', sender)
+    .eq('reminder_optout', true)
+    .select('id')
+  if (error || !data || data.length === 0) return null
+  return '🔔 Siap, pengingat iuran diaktifkan lagi.'
+}
+
 export type IuranAction =
   | { kind: 'bayar'; nama: string; nominal: number | null }
   | { kind: 'tambah_anggota'; nama: string; wa: string | null }

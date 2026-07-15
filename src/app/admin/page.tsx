@@ -12,6 +12,7 @@ import {
   deletePackage,
   addIuranAnggota,
   deleteIuranAnggota,
+  toggleReminderOptout,
   setIuranNominal,
   toggleLaporanPublik,
   rotatePublicSlug,
@@ -38,6 +39,7 @@ type Anggota = {
   nama: string
   nomor_wa: string | null
   nominal_default: number | null
+  reminder_optout?: boolean | null
 }
 type User = {
   id: string
@@ -72,7 +74,7 @@ export default async function AdminPage({
       .order('created_at', { ascending: false }),
     supabase
       .from('iuran_anggota')
-      .select('id, family_id, nama, nomor_wa, nominal_default')
+      .select('id, family_id, nama, nomor_wa, nominal_default, reminder_optout')
       .eq('aktif', true)
       .order('nama'),
   ])
@@ -355,11 +357,19 @@ export default async function AdminPage({
                               {a.nama}
                               {a.nomor_wa ? <span style={{ color: '#71717a' }}> · {a.nomor_wa}</span> : null}
                               {a.nominal_default ? <span style={{ color: '#71717a' }}> · {rp(a.nominal_default)}</span> : null}
+                              {a.reminder_optout ? <span style={{ color: '#b45309' }}> · 🔕 stop reminder</span> : null}
                             </span>
-                            <form action={deleteIuranAnggota}>
-                              <input type="hidden" name="id" value={a.id} />
-                              <button style={ghostBtn}>Hapus</button>
-                            </form>
+                            <span style={{ display: 'flex', gap: 6 }}>
+                              <form action={toggleReminderOptout}>
+                                <input type="hidden" name="id" value={a.id} />
+                                <input type="hidden" name="current" value={String(!!a.reminder_optout)} />
+                                <button style={ghostBtn}>{a.reminder_optout ? 'Aktifkan pengingat' : 'Matikan pengingat'}</button>
+                              </form>
+                              <form action={deleteIuranAnggota}>
+                                <input type="hidden" name="id" value={a.id} />
+                                <button style={ghostBtn}>Hapus</button>
+                              </form>
+                            </span>
                           </div>
                         ))}
                       </div>

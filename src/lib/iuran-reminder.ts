@@ -45,6 +45,7 @@ export async function sendIuranReminders(supabase: SupabaseClient): Promise<numb
         .select('id, nama, nomor_wa, nominal_default')
         .eq('family_id', f.id)
         .eq('aktif', true)
+        .eq('reminder_optout', false) // hormati yang sudah balas STOP
         .not('nomor_wa', 'is', null),
       supabase.from('iuran_pembayaran').select('anggota_id').eq('family_id', f.id).eq('periode', periode),
     ])
@@ -59,7 +60,8 @@ export async function sendIuranReminders(supabase: SupabaseClient): Promise<numb
       const link = f.public_slug && base ? `\n\nCek laporan: ${base}/kas/${f.public_slug}` : ''
       const msg =
         `🔔 Halo ${a.nama}, iuran *${f.nama_keluarga}* periode ${namaPeriode(periode)}${nomLine} ` +
-        `belum tercatat. Mohon segera setor ke bendahara ya. 🙏${link}`
+        `belum tercatat. Mohon segera setor ke bendahara ya. 🙏${link}` +
+        `\n\n_Balas STOP untuk berhenti menerima pengingat._`
       try {
         await sendReply(a.nomor_wa as string, msg)
         sent++

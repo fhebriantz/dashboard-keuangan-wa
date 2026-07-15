@@ -173,6 +173,49 @@ export default function PanduanPage() {
         </div>
       </Section>
 
+      <Section title="👥 Siapa bisa apa (hak akses)">
+        <p style={p}>
+          <b>Keluarga:</b> semua anggota (suami, istri, anak) punya akses <b>sama</b> — semua bisa mencatat & melihat laporan.
+        </p>
+        <p style={p}>
+          <b>Komunitas:</b> ada dua tingkat. <b>Pengurus</b> (bendahara) mengoperasikan bot lewat chat.
+          <b> Warga</b> cukup terdaftar di roster — tak perlu chat, cukup <b>buka link laporan</b> & menerima pengingat.
+        </p>
+        <div style={{ overflowX: 'auto', margin: '10px 0' }}>
+          <table style={{ ...table, minWidth: 460 }}>
+            <thead>
+              <tr>
+                <th style={matTh}>Kemampuan</th>
+                <th style={matTh}>Anggota Keluarga</th>
+                <th style={matTh}>Pengurus Komunitas</th>
+                <th style={matTh}>Warga Komunitas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                ['Catat pemasukan/pengeluaran', '✅', '✅', '❌'],
+                ['Atur amplop / iuran', '✅', '✅', '❌'],
+                ['Kelola anggota (roster)', '➖', '✅', '❌'],
+                ['Lihat laporan', '✅ chat + web', '✅ chat + web', '✅ link publik'],
+                ['Hapus catatan terakhir (sendiri)', '✅', '✅', '❌'],
+                ['Terima & atur pengingat (STOP)', '➖', '➖', '✅'],
+              ].map((r) => (
+                <tr key={r[0]}>
+                  <td style={{ ...td, fontWeight: 600 }}>{r[0]}</td>
+                  <td style={{ ...td, textAlign: 'center' }}>{r[1]}</td>
+                  <td style={{ ...td, textAlign: 'center' }}>{r[2]}</td>
+                  <td style={{ ...td, textAlign: 'center' }}>{r[3]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p style={muted}>
+          <b>Cara mengatur:</b> Pengurus/anggota keluarga ditambahkan saat <b>pendaftaran</b> (atau oleh admin).
+          Warga komunitas ditambah bendahara lewat chat <code style={code}>tambah anggota Budi 0812...</code> atau dari panel admin.
+        </p>
+      </Section>
+
       <Section title="6. Tanya jawab singkat">
         <p style={p}><b>Bot tak membalas?</b> Pastikan nomormu terdaftar & pesan ada angkanya. Ketik <code style={code}>bantuan</code>.</p>
         <p style={p}><b>Sisa amplop vs saldo?</b> Sisa amplop = jatah rencana kategori. Saldo = uang riil (pemasukan − pengeluaran); minus = nombok/pinjam.</p>
@@ -259,4 +302,12 @@ const tagBase: React.CSSProperties = {
 const tagKomunitas: React.CSSProperties = { ...tagBase, background: '#e0f2fe', color: '#075985' }
 const tagKeluarga: React.CSSProperties = { ...tagBase, background: '#dcfce7', color: '#166534' }
 const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 14 }
+const matTh: React.CSSProperties = {
+  textAlign: 'center',
+  padding: '8px 10px',
+  borderBottom: '2px solid var(--border)',
+  fontSize: 12,
+  color: 'var(--muted)',
+  background: 'var(--track)',
+}
 const td: React.CSSProperties = { padding: '8px 8px', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }
