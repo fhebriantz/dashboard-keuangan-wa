@@ -207,14 +207,21 @@ export async function POST(req: NextRequest) {
   // -----------------------------------------------------------
   // 6) Foto struk (kalau ada) -> AI vision baca total. Hanya saat ada gambar.
   // -----------------------------------------------------------
-  if (inbound!.imageUrl) {
-    if (!aiEnabled()) {
-      return respond('📷 Fitur baca struk belum aktif. Ketik manual saja, mis. "Belanja 150000".')
+  // Fonnte FREE mengirim media sebagai "non-text message" TANPA url gambar.
+  const mediaPlaceholder = /^non-(text|button) message$/i.test(inbound!.message.trim())
+  if (inbound!.imageUrl || mediaPlaceholder) {
+    if (inbound!.imageUrl && aiEnabled()) {
+      const rEntry = await aiReadReceipt(inbound!.imageUrl)
+      if (rEntry) return recordAndRespond(rEntry)
+      return respond('📷 Struk tak terbaca (foto kurang jelas / bukan struk). Ketik manual ya, mis. "Belanja 150000".')
     }
-    const rEntry = await aiReadReceipt(inbound!.imageUrl)
-    if (rEntry) return recordAndRespond(rEntry)
+    if (inbound!.imageUrl && !aiEnabled()) {
+      return respond('📷 Fitur baca struk belum aktif. Ketik manual ya, mis. "Belanja 150000".')
+    }
+    // Tak ada URL gambar -> gateway (paket) tak meneruskan media.
     return respond(
-      '📷 Struk tak terbaca (foto kurang jelas / bukan struk). Ketik manual saja, mis. "Belanja 150000".',
+      '📷 Maaf, foto struk belum bisa dibaca lewat WhatsApp di paket ini.\n' +
+        'Ketik manual saja, mis. "Belanja 150000" — atau lihat *bantuan*.',
     )
   }
 
