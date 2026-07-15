@@ -1,8 +1,19 @@
 # Dashboard Keuangan WA — Panduan Instalasi dari 0
 
-Aplikasi **catat keuangan keluarga lewat WhatsApp** yang bisa disewakan ke banyak
-keluarga (multi-tenant). Satu nomor bot WhatsApp dipakai bersama; sistem
-membedakan data tiap keluarga berdasarkan **nomor HP pengirim**.
+Aplikasi **catat keuangan lewat WhatsApp** yang bisa disewakan ke banyak grup
+(multi-tenant). Satu nomor bot WhatsApp dipakai bersama; sistem membedakan data
+tiap grup berdasarkan **nomor HP pengirim**.
+
+Mendukung **dua mode** (dipilih saat pendaftaran):
+
+- **Keluarga / Pribadi / UMKM** — catat pemasukan & pengeluaran, amplop per kategori, laporan.
+- **Kas Komunitas** (RT/RW, arisan, kas kelas, rumah ibadah, sosial) — kelola **iuran per anggota**,
+  **laporan publik transparan** yang bisa dibuka semua warga lewat 1 link (tanpa login), dan
+  **pengingat iuran otomatis** via WA (anggota bisa berhenti dengan balas `STOP`).
+
+Fitur pendukung: **kategori otomatis + belajar**, **input banyak baris sekaligus**,
+**scan struk** (via web, foto tak disimpan), dan **AI opsional** (Google Gemini) sebagai
+cadangan saat parser aturan tak paham — hemat biaya karena rule-based didahulukan.
 
 Contoh pemakaian oleh user:
 
@@ -13,8 +24,8 @@ Bot balas  : ✅ Tercatat untuk Keluarga Budi
              🚗 Transport · Rp 50.000
              📊 Sisa amplop Transport: Rp 450.000
 
-User (WA)  : total
-Bot balas  : 📊 Bulan ini — Pemasukan / Pengeluaran / Saldo + rincian per kategori
+Bendahara  : Budi bayar            (mode komunitas)
+Bot balas  : ✅ Iuran Budi tercatat (Juli 2026) · Rp 50.000
 ```
 
 Pelanggan juga bisa ketik `laporan`, `hari`, `hapus`, atau `bantuan`.
@@ -124,6 +135,12 @@ Buka folder ini di VS Code: `code .`
    - `0006_pricing_dan_generalisasi.sql` → **harga/paket dari admin** + peran anggota bebas
    - `0007_hapus_anggaran_bulanan.sql` → hapus plafon total (cukup amplop + saldo)
    - `0008_budget_logs.sql` → riwayat perubahan amplop (perintah `pindah`)
+   - `0009_category_memory.sql` → bot **belajar** kategori dari koreksi user
+   - `0010_webhook_events.sql` → **idempotensi** (cegah transaksi dobel saat gateway retry)
+   - `0011_family_mode.sql` → **mode kas komunitas** + kolom iuran & laporan publik
+   - `0012_iuran_anggota.sql` → **roster anggota** komunitas (warga yang wajib iuran)
+   - `0013_iuran_pembayaran.sql` → catatan **pembayaran iuran** per periode
+   - `0014_reminder_optout.sql` → **berhenti pengingat** (anggota balas `STOP`)
 
 ### c. Ambil kunci API
 1. Menu kiri → **Project Settings** (ikon gerigi) → **API**.
@@ -160,6 +177,23 @@ Buka folder ini di VS Code: `code .`
    FONNTE_TOKEN=            # token device dari dashboard Fonnte (jika pakai fonnte)
    WA_CLOUD_TOKEN=
    WA_CLOUD_PHONE_ID=
+
+   # alamat publik aplikasi (untuk link laporan/struk/upload di pesan bot)
+   APP_URL=https://nama-project-kamu.vercel.app
+
+   # rahasia cron (opsional) — dikirim otomatis oleh Vercel Cron
+   CRON_SECRET=
+
+   # balas nomor tak terdaftar? default 'false' demi hemat kuota
+   REPLY_TO_UNREGISTERED=false
+
+   # AI OPSIONAL (fallback saat parser aturan tak paham). Kosongkan = AI mati,
+   # sistem tetap jalan penuh dengan rule-based. Pakai Google Gemini (bukan Claude).
+   AI_PROVIDER=gemini
+   GEMINI_API_KEY=                 # satu key; ATAU pakai banyak key di bawah
+   GEMINI_API_KEYS=                # beberapa key dipisah koma (rotasi acak, anti-limit)
+   GEMINI_MODEL=gemini-3.1-flash-lite
+   GEMINI_MODELS=                  # opsional, rantai model dipisah koma
    ```
 
 > ⚠️ File `.env` **tidak ikut ter-upload** ke GitHub (sudah diblokir oleh
@@ -264,28 +298,21 @@ https://NAMA-PROJECT-KAMU.vercel.app/api/webhook/whatsapp?secret=RAHASIA-KAMU
 > Detail anti-ban ada di `src/lib/whatsapp/anti-ban.ts`.
 
 ### Perintah yang bisa diketik pelanggan
-Selain mencatat pengeluaran, pelanggan bisa mengetik (dengan atau tanpa `/`):
-
-| Ketik | Fungsi |
-|---|---|
-| `bantuan` / `help` / `menu` | tampilkan daftar perintah |
-| `total` / `saldo` | pemasukan, pengeluaran, saldo + rekap per kategori |
-| `laporan` / `rekap` | rincian transaksi bulan ini (15 terbaru) |
-| `hari` / `today` | pengeluaran hari ini |
-| `hapus` / `batal` | batalkan catatan terakhir milik sendiri |
-| *(teks biasa)* | mencatat **pengeluaran** (kategori otomatis), mis. `Bensin 50000` |
-| `... #kategori` | override kategori, mis. `beli obat 50rb #kesehatan` |
-| `masuk ...` / `pemasukan ...` / `+...` | mencatat **pemasukan**, mis. `masuk gaji 5000000` |
-| `anggaran <kat> <nominal>` | set amplop kategori, mis. `anggaran makan 2jt` |
-
-> Kalau kategori tak terdeteksi, bot mencatat sebagai **Lainnya** lalu bertanya
-> "masuk kategori apa?" — pelanggan cukup balas satu kata (mis. `makan`), dan
-> kategori transaksi tadi otomatis diperbarui.
+Daftar lengkap perintah (mode keluarga & komunitas, contoh per kebutuhan) ada di
+**[PANDUAN-PELANGGAN.md](PANDUAN-PELANGGAN.md)** dan halaman web **`/panduan`** —
+sengaja tidak diduplikasi di sini. Ringkasnya: ketik transaksi langsung
+(`Bensin 50000`), `masuk ...` untuk pemasukan, `amplop ...` untuk anggaran, dan
+`bantuan` untuk menu (menu otomatis menyesuaikan mode keluarga/komunitas).
 
 ### Laporan versi web
-Tiap keluarga punya halaman laporan yang bisa dibuka di HP:
+Tiap grup punya halaman laporan yang bisa dibuka di HP:
 `https://NAMA-PROJECT-KAMU.vercel.app/laporan/<family_id>`. Link ini tersedia di
 halaman `/admin` (kolom **Laporan → Lihat**) — tinggal kirim ke pelanggan.
+
+Untuk **kas komunitas**, ada laporan **publik transparan** di
+`.../kas/<slug>` — bisa dibuka semua warga tanpa login, menampilkan saldo kas &
+status iuran (siapa sudah/belum bayar). Bendahara ambil linknya lewat chat
+`link laporan`, atau atur (buka/tutup/ganti) dari panel **Kas Komunitas** di `/admin`.
 
 ---
 
@@ -376,18 +403,24 @@ dashboard-keuangan-wa/
 | URL | Untuk siapa | Fungsi |
 |---|---|---|
 | `/` | umum | landing page pemasaran (harga otomatis dari admin) |
-| `/demo` | umum | demo laporan interaktif (data contoh) |
-| `/admin` | kamu (owner) | kelola keluarga & nomor WA + setujui pendaftaran (login password) |
-| `/daftar` | calon pelanggan | form pendaftaran mandiri + info pembayaran |
+| `/demo` | umum | galeri demo laporan per kebutuhan |
+| `/demo/<slug>` | umum | demo laporan sesuai segmen (keluarga, rt-rw, dst) |
+| `/admin` | kamu (owner) | kelola grup, nomor WA, roster iuran + setujui pendaftaran (login) |
+| `/daftar` | calon pelanggan | form pendaftaran mandiri (pilih mode) + info pembayaran |
 | `/panduan` | pelanggan | panduan pemakaian web (ditautkan dari perintah `bantuan`) |
-| `/laporan/<family_id>` | pelanggan | lihat laporan keuangan bulan ini |
+| `/laporan/<family_id>` | pelanggan | laporan keuangan bulan ini (link internal) |
+| `/kas/<slug>` | umum/warga | laporan kas komunitas publik + status iuran (tanpa login) |
+| `/struk/<family_id>` | pelanggan | upload foto struk (dibaca AI, foto tak disimpan) |
 | `/api/webhook/whatsapp` | gateway WA | menerima pesan (bukan untuk dibuka manual) |
+| `/api/keep-alive` | cron | jaga Supabase aktif + kirim pengingat iuran jatuh tempo |
 
 ### Alur pendaftaran pelanggan baru
 1. Calon pelanggan chat **`daftar`** ke bot → bot balas harga + link `/daftar`.
-2. Isi form `/daftar` (nama keluarga, nomor suami/istri, paket) → muncul info transfer.
+2. Isi form `/daftar`: **pilih mode** (Keluarga / Komunitas), nama grup, anggota/pengurus, paket → muncul info transfer.
 3. Kirim bukti transfer via WA → kamu cek → di `/admin` klik **Setujui & Aktifkan**.
-4. Sistem otomatis membuat keluarga + mendaftarkan nomor + set masa aktif sesuai paket.
+4. Sistem otomatis membuat grup (sesuai mode) + mendaftarkan nomor + set masa aktif sesuai paket.
+   Untuk komunitas, bendahara lalu menambah warga & iuran lewat chat (`tambah anggota ...`,
+   `iuran bulanan ...`, `jatuh tempo ...`) atau panel **Kas Komunitas** di `/admin`.
 
 **Harga & paket dikelola dari `/admin`** (bagian "Harga & Rekening"):
 - Harga dihitung dinamis: **(harga per grup + jumlah anggota × harga per anggota) × durasi**.

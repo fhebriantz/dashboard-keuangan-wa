@@ -1,5 +1,9 @@
 # Dokumen Teknis Sistem
-## Dashboard Keuangan Keluarga Berbasis WhatsApp Multi-Tenant (SaaS) dengan Pemrosesan Bahasa Alami Hibrida (Rule-based + LLM)
+## Dashboard Keuangan Berbasis WhatsApp Multi-Tenant & Multi-Mode (SaaS) dengan Pemrosesan Bahasa Alami Hibrida (Rule-based + LLM)
+
+> Sistem melayani dua mode dari satu basis kode: **keuangan keluarga/pribadi** dan
+> **kas komunitas** (RT/RW, arisan, sekolah, rumah ibadah, sosial). Bagian inti
+> (§1–§9) berlaku untuk kedua mode; ekstensi khusus kas komunitas dibahas di §10.
 
 > Dokumen ini mendokumentasikan arsitektur, model data, dan algoritma inti sistem
 > untuk keperluan penulisan tesis/paper S2. Bagian **Analisis**, **Tinjauan
@@ -353,7 +357,93 @@ sequenceDiagram
 
 ---
 
-## 10. Ringkasan Kontribusi Teknis (untuk Pembahasan)
+## 10. Ekstensi Multi-Mode: Kas Komunitas
+
+Sistem yang sama dapat melayani **kas komunitas** hanya dengan penyesuaian kecil,
+digerakkan oleh satu kolom penanda `families.mode` (`keluarga` | `komunitas`).
+Seluruh mesin transaksi/saldo/laporan (§4–§8) dipakai ulang tanpa perubahan.
+
+### 10.1 Dua tingkat identitas
+
+Perbedaan konseptual utama dari mode keluarga:
+
+- **Pengurus/bendahara** = baris `users` (terdaftar, berinteraksi via chat) — hak
+  akses penuh (mencatat, mengelola iuran & roster).
+- **Warga/anggota** = baris `iuran_anggota` (roster) — **bukan** `users`. Tidak
+  mengoperasikan bot; cukup *dicatat* iurannya, **memantau laporan publik**, dan
+  **menerima pengingat**. Nomor WA opsional (hanya untuk pengingat).
+
+Ini adalah model akses dua-tingkat: kebutuhan *read-only* diselesaikan lewat
+tautan publik (tanpa akun), bukan lewat peran berbasis autentikasi.
+
+### 10.2 Model data tambahan
+
+```mermaid
+erDiagram
+  families ||--o{ iuran_anggota : "punya roster"
+  iuran_anggota ||--o{ iuran_pembayaran : membayar
+  families {
+    text mode "keluarga|komunitas"
+    numeric iuran_nominal
+    int iuran_jatuh_tempo "1-28"
+    boolean laporan_publik
+    text public_slug UK
+  }
+  iuran_anggota {
+    uuid id PK
+    uuid family_id FK
+    text nama
+    text nomor_wa "opsional"
+    numeric nominal_default
+    boolean reminder_optout
+  }
+  iuran_pembayaran {
+    uuid id PK
+    uuid family_id FK
+    uuid anggota_id FK
+    text periode "YYYY-MM"
+    numeric nominal
+    uuid transaction_id FK
+  }
+```
+
+### 10.3 Pencatatan iuran & idempotensi periode
+
+Perintah bahasa alami (`Budi bayar`, `iuran Budi 50rb`) memicu **dua efek atomik**:
+(1) menulis satu `transactions` bertipe `pemasukan` kategori "Iuran" sehingga saldo
+kas naik, dan (2) menandai lunas via `iuran_pembayaran`. Batasan **UNIQUE
+`(family_id, anggota_id, periode)`** menjadikan pembayaran *idempotent per periode*:
+percobaan bayar kedua di bulan sama ditolak (pelanggaran keunikan), dan transaksi
+pemasukan yang terlanjur dibuat di-*rollback* — mencegah dobel-hitung.
+
+### 10.4 Laporan publik transparan (transparency-by-URL)
+
+Halaman `/kas/<public_slug>` bersifat publik tanpa autentikasi; `public_slug`
+adalah token acak tak-tertebak yang berfungsi sebagai *capability URL* — dapat
+**dirotasi** (jika bocor) dan **dimatikan** (`laporan_publik=false`). Halaman
+menampilkan saldo kas, komposisi pengeluaran, dan **matriks status iuran**
+(siapa sudah/belum bayar periode berjalan). Ini menjadi pembeda produk terhadap
+kompetitor berbasis aplikasi+login: transparansi tercapai dengan **nol friksi**.
+
+### 10.5 Pengingat terjadwal (digabung dalam cron tunggal)
+
+Pengingat iuran **tidak** memakai cron terpisah, melainkan menumpang cron
+*keep-alive* harian (§8.2) — hemat kuota penjadwal. Pengingat dikirim **hanya pada
+tanggal `iuran_jatuh_tempo`**, sehingga secara alami maksimal **satu kali per
+periode** tanpa perlu tabel log pengiriman. Sasaran: warga yang **belum bayar**
+periode berjalan dan memiliki nomor.
+
+### 10.6 Opt-out pengingat (STOP)
+
+Karena nomor warga dimasukkan bendahara (bukan *opt-in* mandiri), tersedia
+mekanisme berhenti: warga membalas `STOP`/`BERHENTI` → `reminder_optout=true` →
+dikecualikan dari pengiriman berikutnya (`MULAI` untuk mengaktifkan lagi). Selain
+etika, ini menjaga **kesehatan akun bot** dari laporan spam yang dapat memicu
+pemblokiran pada gateway tak resmi.
+
+---
+
+## 11. Ringkasan Kontribusi Teknis (untuk Pembahasan)
 
 Poin yang dapat diangkat sebagai kontribusi/novelty dalam paper:
 
@@ -366,8 +456,12 @@ Poin yang dapat diangkat sebagai kontribusi/novelty dalam paper:
    anti-galat berbasis kehadiran skala.
 4. **Ketahanan LLM praktis**: rotasi kunci acak + rantai model + *timeout
    fallback* untuk lingkungan berkuota gratis.
-5. **Idempotensi tanpa ID pesan** melalui sintesis kunci deterministik.
+5. **Idempotensi tanpa ID pesan** melalui sintesis kunci deterministik; diperluas
+   ke **idempotensi per-periode** pada pembayaran iuran via batasan keunikan.
 6. **Privasi-by-design pada OCR**: pemrosesan gambar tanpa penyimpanan.
+7. **Arsitektur multi-mode satu basis-kode** dengan model akses dua-tingkat dan
+   **transparansi berbasis capability-URL** (laporan publik tanpa login) — sebagai
+   pembeda terhadap solusi berbasis aplikasi+login.
 
 ### Saran metrik evaluasi (untuk ditulis peneliti)
 - Akurasi ekstraksi (nominal/tipe/kategori) rule-based vs hibrida.
@@ -384,10 +478,11 @@ Poin yang dapat diangkat sebagai kontribusi/novelty dalam paper:
 |---|---|
 | `POST /api/webhook/whatsapp` | Pipeline utama pemrosesan pesan |
 | `POST /api/struk/[id]` | OCR struk (in-memory, tanpa simpan gambar) |
-| `GET /api/keep-alive` | Cron: cegah auto-pause + prune |
-| `/` , `/panduan`, `/demo` | Landing, panduan, demo |
-| `/admin` | Panel admin (kelola keluarga, harga, pendaftaran) |
+| `GET /api/keep-alive` | Cron: cegah auto-pause + prune + **kirim pengingat iuran** |
+| `/` , `/panduan`, `/demo`, `/demo/[slug]` | Landing, panduan, galeri & demo per segmen |
+| `/admin` | Panel admin (kelola grup, harga, pendaftaran, **roster iuran**) |
 | `/daftar`, `/laporan/[id]`, `/struk/[id]` | Pendaftaran, laporan, unggah struk |
+| `/kas/[slug]` | **Laporan kas komunitas publik** (tanpa login) + status iuran |
 
 ## Lampiran B — Variabel Lingkungan Inti
 

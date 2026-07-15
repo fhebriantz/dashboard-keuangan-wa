@@ -1,5 +1,10 @@
 # Technical System Document
-## A Multi-Tenant WhatsApp-Based Family Finance SaaS with Hybrid (Rule-based + LLM) Natural-Language Processing
+## A Multi-Tenant, Multi-Mode WhatsApp-Based Finance SaaS with Hybrid (Rule-based + LLM) Natural-Language Processing
+
+> The system serves two modes from a single codebase: **family/personal finance**
+> and **community treasury** (neighborhood associations, rotating savings, school
+> class funds, places of worship, social causes). The core (§1–§9) applies to both
+> modes; the community-treasury extension is covered in §10.
 
 > This document describes the **architecture, data model, and core algorithms** of
 > the system as the object of study for a master's thesis/paper. The **Literature
@@ -307,7 +312,93 @@ they intend to register.
 
 ---
 
-## 10. Technical Contributions & Evaluation Metrics
+## 10. Multi-Mode Extension: Community Treasury
+
+The same system serves a **community treasury** with only minor adjustments,
+driven by a single discriminator column `families.mode` (`keluarga` | `komunitas`).
+The entire transaction/balance/report engine (§4–§8) is reused unchanged.
+
+### 10.1 Two-tier identity
+
+The key conceptual difference from family mode:
+
+- **Treasurer / officer** = a `users` row (registered, interacts via chat) — full
+  access (record, manage dues & roster).
+- **Member / resident** = an `iuran_anggota` row (roster) — **not** a `users` row.
+  They do not operate the bot; they are merely *recorded* for dues, **monitor the
+  public report**, and **receive reminders**. Phone number is optional (only for
+  reminders).
+
+This is a two-tier access model: the read-only need is met through a public link
+(no account), not through an authentication-based role.
+
+### 10.2 Additional data model
+
+```mermaid
+erDiagram
+  families ||--o{ iuran_anggota : "has roster"
+  iuran_anggota ||--o{ iuran_pembayaran : pays
+  families {
+    text mode "keluarga|komunitas"
+    numeric iuran_nominal
+    int iuran_jatuh_tempo "1-28"
+    boolean laporan_publik
+    text public_slug UK
+  }
+  iuran_anggota {
+    uuid id PK
+    uuid family_id FK
+    text nama
+    text nomor_wa "optional"
+    numeric nominal_default
+    boolean reminder_optout
+  }
+  iuran_pembayaran {
+    uuid id PK
+    uuid family_id FK
+    uuid anggota_id FK
+    text periode "YYYY-MM"
+    numeric nominal
+    uuid transaction_id FK
+  }
+```
+
+### 10.3 Dues recording & per-period idempotency
+
+Natural-language commands (`Budi bayar`, `iuran Budi 50rb`) trigger **two atomic
+effects**: (1) insert one `transactions` row of type `pemasukan`, category "Iuran",
+so the treasury balance rises; and (2) mark the payment via `iuran_pembayaran`. A
+**UNIQUE `(family_id, anggota_id, periode)`** constraint makes payment *idempotent
+per period*: a second payment attempt in the same month is rejected (uniqueness
+violation) and the already-created income transaction is rolled back — preventing
+double-counting.
+
+### 10.4 Transparent public report (transparency-by-URL)
+
+The `/kas/<public_slug>` page is public and unauthenticated; `public_slug` is an
+unguessable random token acting as a *capability URL* — it can be **rotated** (if
+leaked) and **disabled** (`laporan_publik=false`). The page shows the treasury
+balance, expense composition, and a **dues-status matrix** (who has/hasn't paid
+the current period). This is the product's differentiator versus app+login
+competitors: transparency achieved with **zero friction**.
+
+### 10.5 Scheduled reminders (folded into a single cron)
+
+Dues reminders use **no separate cron**; they ride the daily *keep-alive* cron
+(§8.2) — saving scheduler quota. Reminders fire **only on the `iuran_jatuh_tempo`
+date**, so they are naturally capped at **once per period** without any send-log
+table. Targets: members who are **unpaid** for the current period and have a number.
+
+### 10.6 Reminder opt-out (STOP)
+
+Because member numbers are entered by the treasurer (not self-opted-in), an opt-out
+exists: a member replies `STOP`/`BERHENTI` → `reminder_optout=true` → excluded from
+future sends (`MULAI` re-enables). Beyond etiquette, this protects the **bot
+account's health** from spam reports that can trigger bans on unofficial gateways.
+
+---
+
+## 11. Technical Contributions & Evaluation Metrics
 
 Points suitable as contributions/novelty:
 1. **A chat-channel multi-tenant SaaS architecture** with dual isolation (RLS for
@@ -318,8 +409,12 @@ Points suitable as contributions/novelty:
    anti-error.
 4. **Practical LLM resilience** — randomised key rotation + model chain + timeout
    fallback for free-quota environments.
-5. **ID-less idempotency** via deterministic key synthesis.
+5. **ID-less idempotency** via deterministic key synthesis; extended to
+   **per-period idempotency** on dues payments via a uniqueness constraint.
 6. **Privacy-by-design OCR** — image processing without storage.
+7. **Single-codebase multi-mode architecture** with a two-tier access model and
+   **capability-URL transparency** (public report without login) — a differentiator
+   against app+login solutions.
 
 ### Suggested evaluation metrics (for the researcher)
 - Extraction accuracy (amount/type/category): rule-based vs hybrid.

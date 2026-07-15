@@ -19,7 +19,8 @@ const FITUR = [
   { icon: '🧮', title: 'Pemasukan & saldo', desc: 'Catat gaji/pemasukan, lihat saldo riil dan sisa anggaran kapan saja.' },
   { icon: '📷', title: 'Scan struk', desc: 'Ketik "upload" → foto struk di web, total & kategori terbaca otomatis. Foto tak disimpan.' },
   { icon: '🗣️', title: 'Ngerti bahasa santai', desc: 'Ketik apa adanya, bahkan kalimat panjang — bot tetap paham maksudmu.' },
-  { icon: '👨‍👩‍👧', title: 'Bareng pasangan/tim', desc: 'Suami, istri, atau anggota lain mencatat dari HP masing-masing ke satu akun.' },
+  { icon: '🏘️', title: 'Kas komunitas transparan', desc: 'RT/RW, arisan, sekolah, rumah ibadah — iuran & pengeluaran tercatat; warga pantau lewat 1 link tanpa login.' },
+  { icon: '🔔', title: 'Pengingat iuran otomatis', desc: 'Bot mengingatkan warga yang belum bayar saat jatuh tempo. Bisa berhenti kapan saja (balas STOP).' },
 ]
 
 const LANGKAH = [
